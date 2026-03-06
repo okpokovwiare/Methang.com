@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Methang - Sign In</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+        html { width: 100%; overflow-x: hidden; }
+        body { width: 100%; min-width: 0; max-width: 100vw; overflow-x: hidden; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: linear-gradient(135deg, #E5E7EB 0%, #F3F4F6 50%, #E5E7EB 100%); min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 16px; }
+        .auth-container { background: white; border-radius: 8px; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08); padding: 32px 24px; width: 100%; max-width: min(400px, calc(100vw - 32px)); }
+        .logo { text-align: center; margin-bottom: 28px; }
+        .logo h1 { font-size: 28px; font-weight: 700; color: #1A1A1A; letter-spacing: -0.5px; margin-bottom: 6px; }
+        .logo p { font-size: 14px; color: #6B7280; font-weight: 400; }
+        .form-group { margin-bottom: 18px; }
+        .form-label { display: block; font-size: 14px; font-weight: 600; color: #1A1A1A; margin-bottom: 6px; }
+        .form-input { width: 100%; padding: 12px 14px; border: 1px solid #D1D5DB; border-radius: 6px; font-size: 16px; color: #1A1A1A; transition: border 0.2s; background: white; }
+        .form-input:focus { outline: none; border-color: #0075FF; box-shadow: 0 0 0 3px rgba(0, 117, 255, 0.1); }
+        .form-input::placeholder { color: #9CA3AF; }
+        .btn { width: 100%; padding: 14px; border: none; border-radius: 6px; font-size: 16px; font-weight: 600; cursor: pointer; transition: all 0.2s; touch-action: manipulation; }
+        .btn-primary { background: #0075FF; color: white; }
+        .btn-primary:active { transform: scale(0.98); background: #0066E0; }
+        .btn-primary:disabled { background: #9CA3AF; cursor: not-allowed; transform: none; }
+        .link-text { text-align: center; margin-top: 18px; font-size: 14px; color: #6B7280; }
+        .link-text a { color: #0075FF; text-decoration: none; font-weight: 600; }
+        .alert { padding: 12px 14px; border-radius: 6px; margin-bottom: 18px; font-size: 14px; font-weight: 500; word-wrap: break-word; }
+        .alert-error { background: #FEE2E2; color: #DC2626; border: 1px solid #FCA5A5; }
+        .alert-success { background: #D1FAE5; color: #059669; border: 1px solid #6EE7B7; }
+        .hidden { display: none !important; }
+        .loading { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; align-items: center; justify-content: center; }
+        .loading.show { display: flex; }
+        .spinner { width: 50px; height: 50px; border: 4px solid #E5E7EB; border-top-color: #0075FF; border-radius: 50%; animation: spin 0.8s linear infinite; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .password-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
+        .forgot-link { font-size: 13px; color: #0075FF; text-decoration: none; font-weight: 500; }
+        @media (min-width: 481px) {
+            .auth-container { padding: 40px 32px; }
+            .logo { margin-bottom: 32px; }
+            .logo h1 { font-size: 32px; }
+            .form-group { margin-bottom: 20px; }
+        }
+    </style>
+</head>
+<body>
+    <div class="loading" id="loading"><div class="spinner"></div></div>
+
+    <div id="loginPage" class="auth-container">
+        <div class="logo">
+            <h1>METHANG</h1>
+            <p>Business Management System</p>
+        </div>
+
+        <div id="loginError" class="alert alert-error hidden"></div>
+
+        <form id="loginForm">
+            <div class="form-group">
+                <label class="form-label">Email</label>
+                <input type="email" id="loginEmail" class="form-input" placeholder="you@example.com" required autocomplete="username">
+            </div>
+
+            <div class="form-group">
+                <div class="password-row">
+                    <label class="form-label" style="margin-bottom: 0;">Password</label>
+                    <a href="#" id="forgotPassword" class="forgot-link">Forgot?</a>
+                </div>
+                <input type="password" id="loginPassword" class="form-input" placeholder="Enter your password" required autocomplete="current-password">
+            </div>
+
+            <button type="submit" class="btn btn-primary" id="loginBtn">Sign In</button>
+        </form>
+
+        <div class="link-text">
+            Don't have an account? <a href="#" id="showSignup">Sign up</a>
+        </div>
+    </div>
+
+    <div id="signupPage" class="auth-container hidden">
+        <div class="logo">
+            <h1>METHANG</h1>
+            <p>Start Managing Your Business</p>
+        </div>
+
+        <div id="signupError" class="alert alert-error hidden"></div>
+        <div id="signupSuccess" class="alert alert-success hidden"></div>
+
+        <form id="signupForm">
+            <div class="form-group">
+                <label class="form-label">Full Name</label>
+                <input type="text" id="signupName" class="form-input" placeholder="John Doe" required autocomplete="name">
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">Business Name</label>
+                <input type="text" id="signupBusiness" class="form-input" placeholder="My Business" required>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">Phone Number</label>
+                <input type="tel" id="signupPhone" class="form-input" placeholder="08012345678" required autocomplete="tel">
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">Email</label>
+                <input type="email" id="signupEmail" class="form-input" placeholder="you@example.com" required autocomplete="email">
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">Password</label>
+                <input type="password" id="signupPassword" class="form-input" placeholder="Min 6 characters" required minlength="6" autocomplete="new-password">
+            </div>
+
+            <button type="submit" class="btn btn-primary" id="signupBtn">Create Account</button>
+        </form>
+
+        <div class="link-text">
+            Already have an account? <a href="#" id="showLogin">Sign in</a>
+        </div>
+    </div>
+
+    <script>
+        const sb = window.supabase.createClient(
+            'https://kzamdgraevgyfxouasbw.supabase.co',
+            'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imt6YW1kZ3JhZXZneWZ4b3Vhc2J3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzI3MDU4NTAsImV4cCI6MjA4ODI4MTg1MH0.u13iWMfs2qKrrx0eR6ka4PwwwtFP7GgYw-MmzBysT6M'
+        );
+
+        const els = {
+            loading: document.getElementById('loading'),
+            loginPage: document.getElementById('loginPage'),
+            signupPage: document.getElementById('signupPage'),
+            loginError: document.getElementById('loginError'),
+            signupError: document.getElementById('signupError'),
+            signupSuccess: document.getElementById('signupSuccess')
+        };
+
+        function showLoading(show) {
+            els.loading.classList.toggle('show', show);
+        }
+
+        function showError(element, message) {
+            element.textContent = message;
+            element.classList.remove('hidden');
+            setTimeout(() => element.classList.add('hidden'), 5000);
+        }
+
+        function showSuccess(element, message) {
+            element.textContent = message;
+            element.classList.remove('hidden');
+        }
+
+        document.getElementById('showSignup').addEventListener('click', (e) => {
+            e.preventDefault();
+            els.loginPage.classList.add('hidden');
+            els.signupPage.classList.remove('hidden');
+        });
+
+        document.getElementById('showLogin').addEventListener('click', (e) => {
+            e.preventDefault();
+            els.signupPage.classList.add('hidden');
+            els.loginPage.classList.remove('hidden');
+        });
+
+        document.getElementById('forgotPassword').addEventListener('click', async (e) => {
+            e.preventDefault();
+            const email = prompt('Enter your email:');
+            if (email) {
+                showLoading(true);
+                try {
+                    const { error } = await sb.auth.resetPasswordForEmail(email);
+                    if (error) throw error;
+                    alert('Password reset email sent!');
+                } catch (error) {
+                    alert('Error: ' + error.message);
+                } finally {
+                    showLoading(false);
+                }
+            }
+        });
+
+        document.getElementById('loginForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const email = document.getElementById('loginEmail').value.trim();
+            const password = document.getElementById('loginPassword').value;
+            
+            showLoading(true);
+            document.getElementById('loginBtn').disabled = true;
+            
+            try {
+                const { error } = await sb.auth.signInWithPassword({ email, password });
+                if (error) throw error;
+                alert('Login successful!');
+                window.location.href = 'app.html';
+            } catch (error) {
+                showError(els.loginError, error.message);
+            } finally {
+                showLoading(false);
+                document.getElementById('loginBtn').disabled = false;
+            }
+        });
+
+        document.getElementById('signupForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const name = document.getElementById('signupName').value.trim();
+            const business = document.getElementById('signupBusiness').value.trim();
+            const phone = document.getElementById('signupPhone').value.trim();
+            const email = document.getElementById('signupEmail').value.trim();
+            const password = document.getElementById('signupPassword').value;
+            
+            showLoading(true);
+            document.getElementById('signupBtn').disabled = true;
+            
+            try {
+                const { data: authData, error: authError } = await sb.auth.signUp({
+                    email,
+                    password,
+                    options: {
+                        data: { name, business_name: business, phone }
+                    }
+                });
+                
+                if (authError) throw authError;
+                
+                if (authData.user) {
+                    await sb.from('profiles').insert({
+                        id: authData.user.id,
+                        name,
+                        business_name: business,
+                        phone,
+                        email
+                    });
+                }
+                
+                showSuccess(els.signupSuccess, 'Account created! Redirecting to login...');
+                document.getElementById('signupForm').reset();
+                
+                setTimeout(() => {
+                    els.signupPage.classList.add('hidden');
+                    els.loginPage.classList.remove('hidden');
+                    els.signupSuccess.classList.add('hidden');
+                }, 2000);
+                
+            } catch (error) {
+                showError(els.signupError, error.message);
+            } finally {
+                showLoading(false);
+                document.getElementById('signupBtn').disabled = false;
+            }
+        });
+
+        (async function() {
+            const { data: { session } } = await sb.auth.getSession();
+            if (session) {
+                window.location.href = 'app.html';
+            }
+        })();
+    </script>
+</body>
+</html>
