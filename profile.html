@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="theme-color" content="#000000">
+    <title>Profile - Methang</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+        html { width: 100%; overflow-x: hidden; }
+        body { width: 100%; min-width: 0; max-width: 100vw; overflow-x: hidden; font-family: 'Inter', sans-serif; background: #F9FAFB; color: #1A1A1A; -webkit-font-smoothing: antialiased; padding: 76px 16px 16px; }
+        
+        .header { position: fixed; top: 0; left: 0; right: 0; width: 100%; height: 60px; background: #F9FAFB; display: flex; align-items: center; justify-content: space-between; padding: 0 16px; z-index: 100; }
+        .back-btn { width: 40px; height: 40px; border-radius: 50%; background: #F3F4F6; border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; touch-action: manipulation; }
+        .back-btn:active { background: #E5E7EB; }
+        .back-icon { width: 20px; height: 20px; stroke: #1A1A1A; stroke-width: 2.5; fill: none; stroke-linecap: round; stroke-linejoin: round; }
+        .header-title { font-size: 18px; font-weight: 700; }
+        
+        .page-title { font-size: 28px; font-weight: 700; margin-bottom: 8px; }
+        .page-sub { font-size: 14px; color: #6B7280; margin-bottom: 20px; }
+        
+        .profile-section { background: white; border-radius: 16px; padding: 24px; margin-bottom: 16px; box-shadow: 0 2px 8px rgba(0,0,0,0.04); width: 100%; max-width: 100%; }
+        .profile-avatar-large { width: 80px; height: 80px; border-radius: 50%; background: linear-gradient(135deg, #000, #1A1A1A); display: flex; align-items: center; justify-content: center; font-size: 32px; font-weight: 700; color: white; margin: 0 auto 16px; cursor: pointer; }
+        .profile-avatar-large:active { transform: scale(0.95); }
+        .profile-name { text-align: center; font-size: 20px; font-weight: 700; margin-bottom: 4px; }
+        .profile-email { text-align: center; font-size: 14px; color: #6B7280; margin-bottom: 20px; }
+        
+        .profile-field { margin-bottom: 16px; }
+        .field-label { font-size: 13px; font-weight: 600; color: #6B7280; margin-bottom: 6px; display: block; }
+        .field-value { font-size: 15px; font-weight: 600; color: #1A1A1A; }
+        .field-input { width: 100%; padding: 12px 14px; border: 2px solid #E5E7EB; border-radius: 12px; font-size: 15px; font-family: inherit; font-weight: 500; }
+        .field-input:focus { outline: none; border-color: #000; }
+        
+        .btn { width: 100%; padding: 14px; border: none; border-radius: 12px; font-size: 15px; font-weight: 700; cursor: pointer; font-family: inherit; touch-action: manipulation; }
+        .btn-primary { background: #000; color: white; margin-top: 20px; }
+        .btn-primary:active { background: #1A1A1A; transform: scale(0.98); }
+        .btn-primary:disabled { background: #9CA3AF; }
+        .btn-secondary { background: #F3F4F6; color: #1A1A1A; margin-top: 12px; }
+        .btn-secondary:active { background: #E5E7EB; }
+        
+        .hidden { display: none !important; }
+        .edit-mode { display: none; }
+        .edit-mode.active { display: block; }
+        .view-mode { display: block; }
+        .view-mode.hidden { display: none; }
+        
+        .loading { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; align-items: center; justify-content: center; }
+        .loading.show { display: flex; }
+        .spinner { width: 50px; height: 50px; border: 4px solid #E5E7EB; border-top-color: #000; border-radius: 50%; animation: spin 0.8s linear infinite; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        
+        .alert { padding: 12px 16px; border-radius: 12px; margin-bottom: 16px; font-size: 14px; font-weight: 500; }
+        .alert-success { background: #D1FAE5; color: #059669; }
+        .alert-error { background: #FEE2E2; color: #DC2626; }
+    </style>
+</head>
+<body>
+    <div class="loading" id="loading"><div class="spinner"></div></div>
+
+    <div class="header">
+        <button class="back-btn" onclick="window.history.back()">
+            <svg class="back-icon" viewBox="0 0 24 24"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
+        </button>
+        <div class="header-title">My Profile</div>
+        <div style="width: 40px;"></div>
+    </div>
+
+    <div class="page-title">My Profile</div>
+    <div class="page-sub">Manage your account information</div>
+
+    <div id="alert" class="alert alert-success hidden"></div>
+
+    <div class="profile-section">
+        <div class="profile-avatar-large" id="avatar">MB</div>
+        <div class="profile-name" id="displayName">My Business</div>
+        <div class="profile-email" id="displayEmail">business@email.com</div>
+
+        <div class="view-mode" id="viewMode">
+            <div class="profile-field">
+                <div class="field-label">Business Name</div>
+                <div class="field-value" id="viewBusiness">My Business</div>
+            </div>
+            <div class="profile-field">
+                <div class="field-label">Owner Name</div>
+                <div class="field-value" id="viewOwner">John Doe</div>
+            </div>
+            <div class="profile-field">
+                <div class="field-label">Phone Number</div>
+                <div class="field-value" id="viewPhone">+234 801 234 5678</div>
+            </div>
+            <div class="profile-field">
+                <div class="field-label">Email Address</div>
+                <div class="field-value" id="viewEmail">business@email.com</div>
+            </div>
+            <button class="btn btn-primary" id="editBtn">Edit Profile</button>
+        </div>
+
+        <div class="edit-mode" id="editMode">
+            <div class="profile-field">
+                <label class="field-label">Business Name</label>
+                <input type="text" class="field-input" id="editBusiness" required>
+            </div>
+            <div class="profile-field">
+                <label class="field-label">Owner Name</label>
+                <input type="text" class="field-input" id="editOwner" required>
+            </div>
+            <div class="profile-field">
+                <label class="field-label">Phone Number</label>
+                <input type="tel" class="field-input" id="editPhone" required>
+            </div>
+            <div class="profile-field">
+                <label class="field-label">Email Address</label>
+                <input type="email" class="field-input" id="editEmail" readonly style="background: #F9FAFB; cursor: not-allowed;">
+            </div>
+            <button class="btn btn-primary" id="saveBtn">Save Changes</button>
+            <button class="btn btn-secondary" id="cancelBtn">Cancel</button>
+        </div>
+    </div>
+
+    <script>
+        const sb = window.supabase.createClient(
+            'https://kzamdgraevgyfxouasbw.supabase.co',
+            'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imt6YW1kZ3JhZXZneWZ4b3Vhc2J3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzI3MDU4NTAsImV4cCI6MjA4ODI4MTg1MH0.u13iWMfs2qKrrx0eR6ka4PwwwtFP7GgYw-MmzBysT6M'
+        );
+
+        let currentUser = null;
+        let profileData = null;
+
+        const els = {
+            loading: document.getElementById('loading'),
+            alert: document.getElementById('alert'),
+            avatar: document.getElementById('avatar'),
+            displayName: document.getElementById('displayName'),
+            displayEmail: document.getElementById('displayEmail'),
+            viewMode: document.getElementById('viewMode'),
+            editMode: document.getElementById('editMode'),
+            editBtn: document.getElementById('editBtn'),
+            saveBtn: document.getElementById('saveBtn'),
+            cancelBtn: document.getElementById('cancelBtn')
+        };
+
+        function showLoading(show) {
+            els.loading.classList.toggle('show', show);
+        }
+
+        function showAlert(message, isError = false) {
+            els.alert.textContent = message;
+            els.alert.className = 'alert ' + (isError ? 'alert-error' : 'alert-success');
+            els.alert.classList.remove('hidden');
+            setTimeout(() => els.alert.classList.add('hidden'), 3000);
+        }
+
+        function getInitials(name) {
+            if (!name) return 'MB';
+            const parts = name.trim().split(' ');
+            if (parts.length >= 2) {
+                return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+            }
+            return name.substring(0, 2).toUpperCase();
+        }
+
+        async function loadProfile() {
+            showLoading(true);
+            try {
+                const { data: { user }, error: userError } = await sb.auth.getUser();
+                if (userError || !user) {
+                    window.location.href = 'login.html';
+                    return;
+                }
+                
+                currentUser = user;
+                
+                const { data: profile, error: profileError } = await sb
+                    .from('profiles')
+                    .select('*')
+                    .eq('id', user.id)
+                    .single();
+                
+                if (profileError) {
+                    profileData = {
+                        name: user.user_metadata?.name || 'User',
+                        business_name: user.user_metadata?.business_name || 'My Business',
+                        phone: user.user_metadata?.phone || '',
+                        email: user.email
+                    };
+                } else {
+                    profileData = profile;
+                }
+                
+                displayProfile();
+                
+            } catch (error) {
+                console.error('Load error:', error);
+                showAlert('Error loading profile', true);
+            } finally {
+                showLoading(false);
+            }
+        }
+
+        function displayProfile() {
+            const initials = getInitials(profileData.business_name);
+            els.avatar.textContent = initials;
+            els.displayName.textContent = profileData.business_name || 'My Business';
+            els.displayEmail.textContent = profileData.email;
+            
+            document.getElementById('viewBusiness').textContent = profileData.business_name || 'My Business';
+            document.getElementById('viewOwner').textContent = profileData.name || 'Owner';
+            document.getElementById('viewPhone').textContent = profileData.phone || 'Not set';
+            document.getElementById('viewEmail').textContent = profileData.email;
+            
+            document.getElementById('editBusiness').value = profileData.business_name || '';
+            document.getElementById('editOwner').value = profileData.name || '';
+            document.getElementById('editPhone').value = profileData.phone || '';
+            document.getElementById('editEmail').value = profileData.email || '';
+        }
+
+        els.editBtn.addEventListener('click', () => {
+            els.viewMode.classList.add('hidden');
+            els.editMode.classList.add('active');
+        });
+
+        els.cancelBtn.addEventListener('click', () => {
+            els.editMode.classList.remove('active');
+            els.viewMode.classList.remove('hidden');
+            displayProfile();
+        });
+
+        els.saveBtn.addEventListener('click', async () => {
+            const business = document.getElementById('editBusiness').value.trim();
+            const owner = document.getElementById('editOwner').value.trim();
+            const phone = document.getElementById('editPhone').value.trim();
+            
+            if (!business || !owner || !phone) {
+                showAlert('Please fill all fields', true);
+                return;
+            }
+            
+            showLoading(true);
+            els.saveBtn.disabled = true;
+            
+            try {
+                const { error } = await sb
+                    .from('profiles')
+                    .upsert({
+                        id: currentUser.id,
+                        name: owner,
+                        business_name: business,
+                        phone: phone,
+                        email: profileData.email
+                    });
+                
+                if (error) throw error;
+                
+                profileData.name = owner;
+                profileData.business_name = business;
+                profileData.phone = phone;
+                
+                displayProfile();
+                els.editMode.classList.remove('active');
+                els.viewMode.classList.remove('hidden');
+                
+                showAlert('Profile updated successfully!');
+                
+            } catch (error) {
+                console.error('Save error:', error);
+                showAlert('Error saving profile', true);
+            } finally {
+                showLoading(false);
+                els.saveBtn.disabled = false;
+            }
+        });
+
+        loadProfile();
+    </script>
+</body>
+</html>
