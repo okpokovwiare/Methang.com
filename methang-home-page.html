@@ -1,0 +1,711 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="theme-color" content="#000000">
+    <title>Methang</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+        html { width: 100%; overflow-x: hidden; }
+        body { width: 100%; min-width: 0; max-width: 100vw; overflow-x: hidden; font-family: 'Inter', sans-serif; background: #F3F4F6; color: #1A1A1A; -webkit-font-smoothing: antialiased; padding: 16px 0 80px; }
+        
+        .header { display: none; }
+        .profile-btn { width: 35px; height: 35px; border-radius: 50%; background: linear-gradient(135deg, #000, #1A1A1A); display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 700; color: white; border: 2px solid #E5E7EB; cursor: pointer; }
+        .profile-btn:active { transform: scale(0.95); }
+        .profile-btn.hidden { display: none; }
+        .back-btn { display: none; width: 40px; height: 40px; border-radius: 50%; background: #F3F4F6; border: none; cursor: pointer; align-items: center; justify-content: center; }
+        .back-btn:active { background: #E5E7EB; }
+        .back-btn.show { display: flex; }
+        .back-icon { width: 20px; height: 20px; stroke: #1A1A1A; stroke-width: 2.5; fill: none; stroke-linecap: round; stroke-linejoin: round; }
+        .header-icons { display: flex; gap: 8px; }
+        .icon-btn { width: 40px; height: 40px; border-radius: 50%; background: none; border: none; display: flex; align-items: center; justify-content: center; position: relative; cursor: pointer; }
+        .icon-btn:active { background: rgba(0,0,0,0.05); }
+        .icon { width: 22px; height: 22px; stroke: #4B5563; stroke-width: 2; fill: none; stroke-linecap: round; stroke-linejoin: round; }
+        .dot { position: absolute; top: 8px; right: 8px; width: 8px; height: 8px; background: #DC2626; border-radius: 50%; border: 2px solid #F9FAFB; }
+        
+        .menu-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 200; }
+        .menu-overlay.show { display: block; }
+        .profile-menu { position: fixed; top: 0; left: -280px; width: 280px; max-width: 80%; height: 100%; background: white; z-index: 201; transition: left 0.3s; box-shadow: 2px 0 20px rgba(0,0,0,0.1); overflow-y: auto; }
+        .profile-menu.show { left: 0; }
+        .menu-header { padding: 24px 20px; background: linear-gradient(135deg, #000, #1A1A1A); color: white; }
+        .menu-avatar { width: 64px; height: 64px; border-radius: 50%; background: rgba(255,255,255,0.2); display: flex; align-items: center; justify-content: center; font-size: 24px; font-weight: 700; margin-bottom: 12px; border: 3px solid rgba(255,255,255,0.3); }
+        .menu-name { font-size: 18px; font-weight: 700; margin-bottom: 4px; }
+        .menu-email { font-size: 13px; opacity: 0.9; }
+        .menu-items { padding: 8px 0; }
+        .menu-item { display: flex; align-items: center; gap: 16px; padding: 16px 20px; cursor: pointer; background: none; border: none; width: 100%; text-align: left; }
+        .menu-item:active { background: #F9FAFB; }
+        .menu-icon { width: 22px; height: 22px; stroke: #4B5563; stroke-width: 2; fill: none; stroke-linecap: round; stroke-linejoin: round; }
+        .menu-text { font-size: 15px; font-weight: 600; color: #1A1A1A; }
+        .menu-divider { height: 1px; background: #E5E7EB; margin: 8px 0; }
+        .menu-item.danger .menu-icon { stroke: #DC2626; }
+        .menu-item.danger .menu-text { color: #DC2626; }
+        
+        .content { width: 100%; max-width: 100%; padding: 0 16px 16px; overflow-x: hidden; }
+        .content.no-nav { padding-bottom: 16px; }
+        .page { display: none; width: 100%; }
+        .page.active { display: block; animation: fadeIn 0.2s; }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        
+        .welcome { margin-bottom: 24px; }
+        .welcome-title { font-size: 20px; font-weight: 700; margin-bottom: 4px; }
+        .welcome-sub { font-size: 14px; color: #6B7280; }
+        .stats { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; margin-bottom: 24px; width: 100%; max-width: 100%; }
+        .stat { background: white; border-radius: 16px; padding: 20px 16px; box-shadow: 0 2px 8px rgba(0,0,0,0.04); min-width: 0; }
+        .stat-label { font-size: 11px; font-weight: 600; color: #6B7280; text-transform: uppercase; margin-bottom: 8px; }
+        .stat-value { font-size: 26px; font-weight: 700; margin-bottom: 4px; }
+        .stat-change { font-size: 12px; font-weight: 600; color: #059669; }
+        
+        .section-title { font-size: 18px; font-weight: 700; margin-bottom: 16px; }
+        .card { background: white; border-radius: 16px; padding: 16px; margin-bottom: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.04); }
+        .card-header { display: flex; justify-content: space-between; margin-bottom: 8px; gap: 12px; }
+        .card-title { font-size: 16px; font-weight: 700; margin-bottom: 4px; }
+        .card-sub { font-size: 13px; color: #6B7280; }
+        .card-amount { font-size: 18px; font-weight: 700; white-space: nowrap; }
+        .badge { display: inline-block; padding: 4px 12px; border-radius: 12px; font-size: 12px; font-weight: 600; }
+        .badge-success { background: #D1FAE5; color: #059669; }
+        .badge-warning { background: #FEF3C7; color: #D97706; }
+        .empty-state { text-align: center; padding: 40px 20px; color: #6B7280; }
+        
+        .sliding-tabs-section { margin: 24px 0; overflow: hidden; width: 100%; max-width: 100%; }
+        .sliding-tabs-container { display: flex; overflow-x: auto; scroll-snap-type: x mandatory; scroll-behavior: smooth; -webkit-overflow-scrolling: touch; gap: 12px; padding-bottom: 8px; scrollbar-width: none; width: 100%; max-width: 100%; }
+        .sliding-tabs-container::-webkit-scrollbar { display: none; }
+        .slide-tab { min-width: calc(100% - 32px); max-width: calc(100% - 32px); scroll-snap-align: start; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 16px; padding: 24px 20px; color: white; box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3); flex-shrink: 0; }
+        .slide-tab-icon { width: 48px; height: 48px; background: rgba(255,255,255,0.2); border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 24px; margin-bottom: 16px; }
+        .slide-tab-title { font-size: 18px; font-weight: 700; margin-bottom: 8px; }
+        .slide-tab-desc { font-size: 14px; opacity: 0.9; line-height: 1.5; }
+        .slide-dots { display: flex; justify-content: center; gap: 6px; margin-top: 12px; }
+        .slide-dot { width: 8px; height: 8px; border-radius: 50%; background: #D1D5DB; transition: all 0.3s; }
+        .slide-dot.active { width: 24px; border-radius: 4px; background: #667eea; }
+        
+        .add-btn-container { position: fixed; bottom: 55px; left: 50%; transform: translateX(-50%); z-index: 101; }
+        .add-btn-container.hidden { display: none; }
+        .add-btn { padding: 12px 32px; background: #000; color: white; border: none; border-radius: 24px; font-size: 15px; font-weight: 700; cursor: pointer; box-shadow: 0 4px 12px rgba(0,0,0,0.2); }
+        .add-btn:active { transform: scale(0.95); }
+        
+        .add-menu { display: none; position: fixed; bottom: 110px; left: 50%; transform: translateX(-50%); z-index: 102; min-width: 200px; max-width: calc(100% - 32px); }
+        .add-menu.show { display: block; animation: fadeUp 0.2s; }
+        @keyframes fadeUp { from { opacity: 0; transform: translateX(-50%) translateY(10px); } to { opacity: 1; transform: translateX(-50%) translateY(0); } }
+        .add-item { background: white; padding: 14px 20px; border-radius: 12px; margin-bottom: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); font-size: 15px; font-weight: 600; cursor: pointer; text-align: center; }
+        .add-item:active { background: #F9FAFB; }
+        
+        .bottom-nav { position: fixed; bottom: 0; left: 0; right: 0; width: 100%; height: 70px; background: white; border-top: 1px solid #E5E7EB; display: flex; justify-content: space-around; padding: 8px 0; z-index: 100; }
+        .bottom-nav.hidden { display: none; }
+        .nav-item { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; cursor: pointer; padding: 8px 4px; }
+        .nav-item:active { opacity: 0.7; }
+        .nav-icon { width: 24px; height: 24px; stroke: #6B7280; stroke-width: 2; fill: none; stroke-linecap: round; stroke-linejoin: round; }
+        .nav-label { font-size: 11px; font-weight: 600; color: #6B7280; white-space: nowrap; }
+        .nav-item.active .nav-icon { stroke: #000; }
+        .nav-item.active .nav-label { color: #000; }
+        
+        .form-modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 300; align-items: flex-end; }
+        .form-modal.show { display: flex; animation: fadeIn 0.2s; }
+        .form-container { width: 100%; background: white; border-radius: 24px 24px 0 0; padding: 24px; max-height: 85vh; overflow-y: auto; animation: slideUp 0.3s; }
+        @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
+        .form-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; }
+        .form-title { font-size: 22px; font-weight: 700; }
+        .close-btn { width: 32px; height: 32px; border-radius: 50%; background: #F3F4F6; border: none; display: flex; align-items: center; justify-content: center; cursor: pointer; }
+        .close-icon { width: 18px; height: 18px; stroke: #1A1A1A; stroke-width: 2.5; fill: none; }
+        
+        .form-group { margin-bottom: 20px; }
+        .form-label { display: block; font-size: 14px; font-weight: 600; color: #374151; margin-bottom: 8px; }
+        .form-input, .form-select { width: 100%; padding: 12px 16px; border: 2px solid #E5E7EB; border-radius: 12px; font-size: 15px; font-family: inherit; }
+        .form-input:focus, .form-select:focus { outline: none; border-color: #000; }
+        
+        .toggle-group { display: flex; gap: 8px; margin-bottom: 16px; }
+        .toggle-option { flex: 1; padding: 12px; border: 2px solid #E5E7EB; border-radius: 12px; text-align: center; font-size: 14px; font-weight: 600; cursor: pointer; background: white; }
+        .toggle-option.active { border-color: #000; background: #000; color: white; }
+        
+        .btn { width: 100%; padding: 14px; border: none; border-radius: 12px; font-size: 15px; font-weight: 700; cursor: pointer; font-family: inherit; touch-action: manipulation; }
+        .btn-primary { background: #000; color: white; }
+        .btn-primary:active { background: #1A1A1A; }
+        .btn-primary:disabled { background: #9CA3AF; }
+        
+        .loading { display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: white; padding: 24px; border-radius: 16px; box-shadow: 0 4px 12px rgba(0,0,0,0.2); z-index: 400; }
+        .loading.show { display: block; }
+        .spinner { width: 40px; height: 40px; border: 4px solid #E5E7EB; border-top-color: #000; border-radius: 50%; animation: spin 0.8s linear infinite; margin: 0 auto 12px; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+    </style>
+</head>
+<body>
+    <div class="loading" id="loading"><div class="spinner"></div><div style="text-align:center;font-weight:600;">Loading...</div></div>
+    
+    <div class="header">
+        <div class="welcome-title" style="font-size: 18px; font-weight: 700;">Hello My Business</div>
+        <button class="back-btn" id="backBtn"><svg class="back-icon" viewBox="0 0 24 24"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg></button>
+        <button class="profile-btn" id="profileBtn">MB</button>
+    </div>
+
+    <div class="menu-overlay" id="overlay"></div>
+    <div class="profile-menu" id="menu">
+        <div class="menu-header"><div class="menu-avatar">MB</div><div class="menu-name">My Business</div><div class="menu-email"><a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="f29087819b9c978181b2979f939b9edc919d9f">[email&#160;protected]</a></div></div>
+        <div class="menu-items">
+            <button class="menu-item" data-page="profile"><svg class="menu-icon" viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg><span class="menu-text">My Profile</span></button>
+            <button class="menu-item" data-page="settings"><svg class="menu-icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/></svg><span class="menu-text">Settings</span></button>
+            <button class="menu-item" data-page="analytics"><svg class="menu-icon" viewBox="0 0 24 24"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg><span class="menu-text">Analytics</span></button>
+            <button class="menu-item" data-page="subscription"><svg class="menu-icon" viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg><span class="menu-text">Subscription</span></button>
+            <div class="menu-divider"></div>
+            <button class="menu-item danger" id="logoutBtn"><svg class="menu-icon" viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg><span class="menu-text">Logout</span></button>
+        </div>
+    </div>
+
+    <div class="content" id="content">
+        <div class="page active" id="home">
+            <div class="welcome" style="margin-bottom: 20px; position: relative;">
+                <button class="profile-btn" id="notificationBtn" style="position: absolute; top: 0; right: 0; background: white; border: none; box-shadow: 0 2px 4px rgba(0,0,0,0.08);">
+                    <svg style="width: 20px; height: 20px; stroke: #1A1A1A; stroke-width: 2.5; fill: none; stroke-linecap: round; stroke-linejoin: round;" viewBox="0 0 24 24"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+                </button>
+                <div class="welcome-title" id="businessName" style="font-size: 18px; font-weight: 700; margin-bottom: 4px; padding-right: 60px;">Hello My Business</div>
+                <div class="welcome-sub">Here's your business overview</div>
+            </div>
+            <div class="section-title">Quick Actions</div>
+            <div class="stats">
+                <div class="stat" style="cursor: pointer; background: linear-gradient(135deg, #06b6d4 0%, #0891b2 100%); border: none; position: relative; overflow: hidden;" data-action="product">
+                    <div style="position: absolute; top: -10px; right: -10px; width: 80px; height: 80px; background: rgba(255,255,255,0.1); border-radius: 50%;"></div>
+                    <svg style="width: 32px; height: 32px; stroke: white; stroke-width: 2; fill: none; margin-bottom: 12px;" viewBox="0 0 24 24"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>
+                    <div style="font-size: 13px; font-weight: 700; color: white;">Add Product</div>
+                </div>
+                <div class="stat" style="cursor: pointer; background: linear-gradient(135deg, #06b6d4 0%, #0891b2 100%); border: none; position: relative; overflow: hidden;" data-action="expense">
+                    <div style="position: absolute; top: -10px; right: -10px; width: 80px; height: 80px; background: rgba(255,255,255,0.1); border-radius: 50%;"></div>
+                    <svg style="width: 32px; height: 32px; stroke: white; stroke-width: 2; fill: none; margin-bottom: 12px;" viewBox="0 0 24 24"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>
+                    <div style="font-size: 13px; font-weight: 700; color: white;">Add Expenses</div>
+                </div>
+                <div class="stat" style="cursor: pointer; background: linear-gradient(135deg, #06b6d4 0%, #0891b2 100%); border: none; position: relative; overflow: hidden;" data-action="customer">
+                    <div style="position: absolute; top: -10px; right: -10px; width: 80px; height: 80px; background: rgba(255,255,255,0.1); border-radius: 50%;"></div>
+                    <svg style="width: 32px; height: 32px; stroke: white; stroke-width: 2; fill: none; margin-bottom: 12px;" viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                    <div style="font-size: 13px; font-weight: 700; color: white;">Add Customer</div>
+                </div>
+                <div class="stat" style="cursor: pointer; background: linear-gradient(135deg, #06b6d4 0%, #0891b2 100%); border: none; position: relative; overflow: hidden;" data-action="packages">
+                    <div style="position: absolute; top: -10px; right: -10px; width: 80px; height: 80px; background: rgba(255,255,255,0.1); border-radius: 50%;"></div>
+                    <svg style="width: 32px; height: 32px; stroke: white; stroke-width: 2; fill: none; margin-bottom: 12px;" viewBox="0 0 24 24"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>
+                    <div style="font-size: 13px; font-weight: 700; color: white;">Packages</div>
+                </div>
+            </div>
+            
+            <div class="sliding-tabs-section">
+                <div class="sliding-tabs-container" id="slidingTabs">
+                    <div class="slide-tab" style="background: white; color: #1A1A1A; padding: 20px 16px;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                            <div style="font-size: 14px; font-weight: 700;">Sales Order Summary</div>
+                            <button style="background: #F3F4F6; border: 1px solid #E5E7EB; border-radius: 16px; padding: 6px 12px; font-size: 12px; font-weight: 600; display: flex; align-items: center; gap: 4px;">
+                                This Month
+                                <svg style="width: 12px; height: 12px; stroke: #1A1A1A; stroke-width: 2; fill: none;" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg>
+                            </button>
+                        </div>
+                        <div style="display: flex; gap: 6px; margin-bottom: 12px;">
+                            <button style="background: #F3F4F6; border: none; border-radius: 16px; padding: 6px 14px; font-size: 12px; font-weight: 600; color: #6B7280;">Amount</button>
+                            <button style="background: #000; border: none; border-radius: 16px; padding: 6px 14px; font-size: 12px; font-weight: 600; color: white;">Quantity</button>
+                        </div>
+                        <div style="background: #EFF6FF; border-radius: 12px; padding: 24px 16px; text-align: center; position: relative;">
+                            <div style="font-size: 13px; color: #6B7280; line-height: 1.4;">There are no sales orders during the selected period.</div>
+                            <svg style="position: absolute; bottom: 8px; right: 8px; width: 60px; height: 40px; opacity: 0.3; stroke: #93C5FD; stroke-width: 2; fill: none;" viewBox="0 0 100 80"><polyline points="10,60 30,40 50,50 70,20 90,30"/><circle cx="70" cy="20" r="8" fill="#FFA500"/></svg>
+                        </div>
+                    </div>
+                    <div class="slide-tab" style="background: white; color: #1A1A1A; padding: 20px 16px;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+                            <div style="font-size: 14px; font-weight: 700;">Top Selling Items</div>
+                            <button style="background: #F3F4F6; border: 1px solid #E5E7EB; border-radius: 16px; padding: 6px 12px; font-size: 12px; font-weight: 600; display: flex; align-items: center; gap: 4px;">
+                                This Month
+                                <svg style="width: 12px; height: 12px; stroke: #1A1A1A; stroke-width: 2; fill: none;" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg>
+                            </button>
+                        </div>
+                        <div style="background: #EFF6FF; border-radius: 12px; padding: 40px 16px; text-align: center; position: relative;">
+                            <div style="font-size: 13px; color: #6B7280; line-height: 1.4;">No items were invoiced in this time frame</div>
+                            <svg style="position: absolute; bottom: 8px; right: 8px; width: 60px; height: 40px; opacity: 0.3; stroke: #93C5FD; stroke-width: 2; fill: none;" viewBox="0 0 100 80"><polyline points="10,60 30,40 50,50 70,20 90,30"/><circle cx="70" cy="20" r="8" fill="#FFA500"/></svg>
+                        </div>
+                    </div>
+                </div>
+                <div class="slide-dots" id="slideDots">
+                    <div class="slide-dot active"></div>
+                    <div class="slide-dot"></div>
+                </div>
+            </div>
+            
+            <div class="section-title">Sales Activity</div>
+            <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; margin-bottom: 24px;">
+                <div class="card" style="cursor: pointer; position: relative;" data-activity="pack">
+                    <div style="width: 48px; height: 48px; background: #FEF3C7; border-radius: 12px; display: flex; align-items: center; justify-content: center; margin-bottom: 12px;">
+                        <span style="font-size: 24px;">📦</span>
+                    </div>
+                    <div style="font-size: 13px; color: #6B7280; margin-bottom: 8px; line-height: 1.4;">Orders to<br>be packed</div>
+                    <div class="stat-value" style="font-size: 32px; font-weight: 700;">0</div>
+                    <svg style="position: absolute; bottom: 16px; right: 16px; width: 20px; height: 20px; stroke: #9CA3AF; stroke-width: 2; fill: none;" viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></svg>
+                </div>
+                
+                <div class="card" style="cursor: pointer; position: relative;" data-activity="ship">
+                    <div style="width: 48px; height: 48px; background: #D1FAE5; border-radius: 12px; display: flex; align-items: center; justify-content: center; margin-bottom: 12px;">
+                        <span style="font-size: 24px;">🚚</span>
+                    </div>
+                    <div style="font-size: 13px; color: #6B7280; margin-bottom: 8px; line-height: 1.4;">Packages To<br>be Shipped</div>
+                    <div class="stat-value" style="font-size: 32px; font-weight: 700;">0</div>
+                    <svg style="position: absolute; bottom: 16px; right: 16px; width: 20px; height: 20px; stroke: #9CA3AF; stroke-width: 2; fill: none;" viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></svg>
+                </div>
+                
+                <div class="card" style="cursor: pointer; position: relative;" data-activity="deliver">
+                    <div style="width: 48px; height: 48px; background: #FED7AA; border-radius: 12px; display: flex; align-items: center; justify-content: center; margin-bottom: 12px;">
+                        <span style="font-size: 24px;">✓</span>
+                    </div>
+                    <div style="font-size: 13px; color: #6B7280; margin-bottom: 8px; line-height: 1.4;">Shipment to<br>be Delivered</div>
+                    <div class="stat-value" style="font-size: 32px; font-weight: 700;">0</div>
+                    <svg style="position: absolute; bottom: 16px; right: 16px; width: 20px; height: 20px; stroke: #9CA3AF; stroke-width: 2; fill: none;" viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></svg>
+                </div>
+                
+                <div class="card" style="cursor: pointer; position: relative;" data-activity="invoice">
+                    <div style="width: 48px; height: 48px; background: #DBEAFE; border-radius: 12px; display: flex; align-items: center; justify-content: center; margin-bottom: 12px;">
+                        <span style="font-size: 24px;">📄</span>
+                    </div>
+                    <div style="font-size: 13px; color: #6B7280; margin-bottom: 8px; line-height: 1.4;">Orders to<br>be Invoiced</div>
+                    <div class="stat-value" style="font-size: 32px; font-weight: 700;">0</div>
+                    <svg style="position: absolute; bottom: 16px; right: 16px; width: 20px; height: 20px; stroke: #9CA3AF; stroke-width: 2; fill: none;" viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></svg>
+                </div>
+            </div>
+        </div>
+        <div class="page" id="sales"><div class="list-title">Sales</div><div id="salesList"></div></div>
+        <div class="page" id="products"><div class="list-title">Products</div><div id="productsList"></div></div>
+        <div class="page" id="customers"><div class="list-title">Customers</div><div id="customersList"></div></div>
+        <div class="page" id="expenses"><div class="list-title">Expenses</div><div id="expensesList"></div></div>
+        <div class="page" id="profile"><div class="list-title">Profile</div></div>
+        <div class="page" id="settings"><div class="list-title">Settings</div></div>
+        <div class="page" id="analytics"><div class="list-title">Analytics</div></div>
+        <div class="page" id="subscription"><div class="list-title">Subscription</div></div>
+    </div>
+
+    <div class="add-btn-container" id="addContainer"><button class="add-btn" id="addBtn">CHECK OUT</button></div>
+    <div class="add-menu" id="addMenu">
+        <div class="add-item" data-form="sale">Add Sale</div>
+        <div class="add-item" data-form="product">Add Product</div>
+        <div class="add-item" data-form="customer">Add Customer</div>
+        <div class="add-item" data-form="expense">Add Expense</div>
+    </div>
+
+    <nav class="bottom-nav" id="bottomNav">
+        <div class="nav-item active" data-page="home"><svg class="nav-icon" viewBox="0 0 24 24"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg><div class="nav-label">Home</div></div>
+        <div class="nav-item" data-page="expenses"><svg class="nav-icon" viewBox="0 0 24 24"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg><div class="nav-label">Expenses</div></div>
+        <div class="nav-item" data-page="products"><svg class="nav-icon" viewBox="0 0 24 24"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg><div class="nav-label">Products</div></div>
+        <div class="nav-item" data-page="customers"><svg class="nav-icon" viewBox="0 0 24 24"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/></svg><div class="nav-label">Sale Order</div></div>
+        <div class="nav-item" id="menuBtn"><svg class="nav-icon" viewBox="0 0 24 24"><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/></svg><div class="nav-label">Menu</div></div>
+    </nav>
+
+    <div class="form-modal" id="formModal"><div class="form-container" id="formContainer"></div></div>
+
+    <script data-cfasync="false" src="/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js"></script><script>
+        const sb = window.supabase.createClient(
+            'https://kzamdgraevgyfxouasbw.supabase.co',
+            'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imt6YW1kZ3JhZXZneWZ4b3Vhc2J3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzI3MDU4NTAsImV4cCI6MjA4ODI4MTg1MH0.u13iWMfs2qKrrx0eR6ka4PwwwtFP7GgYw-MmzBysT6M'
+        );
+
+        const app = {
+            data: { products: [], customers: [], sales: [], expenses: [], user: null, profile: null },
+            els: {},
+            specialPages: ['settings', 'analytics', 'subscription'],
+            lastNormalPage: 'home',
+            
+            init: async function() {
+                // Check authentication first
+                await this.checkAuth();
+                
+                this.els = {
+                    loading: document.getElementById('loading'),
+                    notificationBtn: document.getElementById('notificationBtn'),
+                    backBtn: document.getElementById('backBtn'),
+                    overlay: document.getElementById('overlay'),
+                    menu: document.getElementById('menu'),
+                    addBtn: document.getElementById('addBtn'),
+                    addMenu: document.getElementById('addMenu'),
+                    addContainer: document.getElementById('addContainer'),
+                    bottomNav: document.getElementById('bottomNav'),
+                    formModal: document.getElementById('formModal'),
+                    formContainer: document.getElementById('formContainer')
+                };
+                
+                this.initSlidingTabs();
+                this.attachEvents();
+                await this.loadData();
+                this.render();
+            },
+            
+            checkAuth: async function() {
+                const { data: { session } } = await sb.auth.getSession();
+                if (!session) {
+                    window.location.href = 'login.html';
+                    return;
+                }
+                this.data.user = session.user;
+                
+                // Load user profile
+                const { data: profile } = await sb.from('profiles').select('*').eq('id', session.user.id).single();
+                this.data.profile = profile || { business_name: 'My Business' };
+            },
+                this.attachEvents();
+                await this.loadData();
+                this.render();
+            },
+            
+            initSlidingTabs: function() {
+                const container = document.getElementById('slidingTabs');
+                const dots = document.querySelectorAll('.slide-dot');
+                let currentSlide = 0;
+                
+                container.addEventListener('scroll', () => {
+                    const slideWidth = container.querySelector('.slide-tab').offsetWidth + 12;
+                    currentSlide = Math.round(container.scrollLeft / slideWidth);
+                    dots.forEach((dot, i) => {
+                        dot.classList.toggle('active', i === currentSlide);
+                    });
+                });
+                
+                dots.forEach((dot, i) => {
+                    dot.onclick = () => {
+                        const slideWidth = container.querySelector('.slide-tab').offsetWidth + 12;
+                        container.scrollTo({ left: slideWidth * i, behavior: 'smooth' });
+                    };
+                });
+            },
+            
+            attachEvents: function() {
+                this.els.notificationBtn.onclick = () => this.showPage('customers');
+                this.els.backBtn.onclick = () => this.showPage(this.lastNormalPage);
+                this.els.overlay.onclick = () => { this.els.overlay.classList.remove('show'); this.els.menu.classList.remove('show'); };
+                this.els.addBtn.onclick = () => this.els.addMenu.classList.toggle('show');
+                this.els.formModal.onclick = (e) => { if (e.target === this.els.formModal) this.closeForm(); };
+                
+                document.getElementById('menuBtn').onclick = () => { this.els.overlay.classList.add('show'); this.els.menu.classList.add('show'); };
+                
+                document.querySelectorAll('.stat[data-action]').forEach(card => {
+                    card.onclick = () => {
+                        const action = card.dataset.action;
+                        if (action === 'product') this.openForm('product');
+                        else if (action === 'expense') this.openForm('expense');
+                        else if (action === 'customer') this.openForm('customer');
+                        else if (action === 'packages') alert('Packages feature coming soon!');
+                    };
+                });
+                
+                document.querySelectorAll('.nav-item').forEach(item => {
+                    item.onclick = () => {
+                        this.showPage(item.dataset.page);
+                        document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+                        item.classList.add('active');
+                    };
+                });
+                
+                document.querySelectorAll('.menu-item[data-page]').forEach(item => {
+                    item.onclick = () => {
+                        this.showPage(item.dataset.page);
+                        this.els.overlay.classList.remove('show');
+                        this.els.menu.classList.remove('show');
+                    };
+                });
+                
+                document.querySelectorAll('.add-item').forEach(item => {
+                    item.onclick = () => {
+                        this.openForm(item.dataset.form);
+                        this.els.addMenu.classList.remove('show');
+                    };
+                });
+            },
+            
+            showPage: function(pageId) {
+                document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+                document.getElementById(pageId)?.classList.add('active');
+                
+                const isSpecial = this.specialPages.includes(pageId);
+                this.els.bottomNav.classList.toggle('hidden', isSpecial);
+                this.els.addContainer.classList.toggle('hidden', isSpecial);
+                this.els.profileBtn.classList.toggle('hidden', isSpecial);
+                this.els.backBtn.classList.toggle('show', isSpecial);
+                
+                if (!isSpecial) this.lastNormalPage = pageId;
+                window.scrollTo(0, 0);
+            },
+            
+            showLoading: function(show) {
+                this.els.loading.classList.toggle('show', show);
+            },
+            
+            async loadData() {
+                this.showLoading(true);
+                try {
+                    const [products, customers, sales, expenses] = await Promise.all([
+                        sb.from('products').select('*'),
+                        sb.from('customers').select('*'),
+                        sb.from('sales').select('*'),
+                        sb.from('expenses').select('*')
+                    ]);
+                    
+                    this.data.products = products.data || [];
+                    this.data.customers = customers.data || [];
+                    this.data.sales = sales.data || [];
+                    this.data.expenses = expenses.data || [];
+                } catch (error) {
+                    console.error('Load error:', error);
+                } finally {
+                    this.showLoading(false);
+                }
+            },
+            
+            render: function() {
+                // Update business name
+                const businessName = this.data.profile?.business_name || 'My Business';
+                document.getElementById('businessName').textContent = `Hello ${businessName}`;
+                
+                // Update Sales Activity counts
+                this.renderSalesActivity();
+                
+                this.renderStats();
+                this.renderProducts();
+                this.renderCustomers();
+                this.renderSales();
+                this.renderExpenses();
+            },
+            
+            renderSalesActivity: function() {
+                // For now showing 0 - will be calculated from sales data
+                // These would be filtered based on sales status in real implementation
+                const ordersToPack = 0;
+                const packagesToShip = 0;
+                const shipmentsToDeliver = 0;
+                const ordersToInvoice = 0;
+                
+                // Update counts (IDs will be added to HTML)
+                const packCount = document.querySelector('[data-activity="pack"] .stat-value');
+                const shipCount = document.querySelector('[data-activity="ship"] .stat-value');
+                const deliverCount = document.querySelector('[data-activity="deliver"] .stat-value');
+                const invoiceCount = document.querySelector('[data-activity="invoice"] .stat-value');
+                
+                if (packCount) packCount.textContent = ordersToPack;
+                if (shipCount) shipCount.textContent = packagesToShip;
+                if (deliverCount) deliverCount.textContent = shipmentsToDeliver;
+                if (invoiceCount) invoiceCount.textContent = ordersToInvoice;
+            },
+            
+            renderStats: function() {
+                // Stats removed from home page - keeping function for compatibility
+            },
+            
+            renderProducts: function() {
+                const html = this.data.products.length ? this.data.products.map(p => `
+                    <div class="card">
+                        <div class="card-header">
+                            <div><div class="card-title">${p.name}</div><div class="card-sub">Stock: ${p.stock || 0}</div></div>
+                            <div class="card-amount">₦${(p.price || 0).toLocaleString()}</div>
+                        </div>
+                        <span class="badge ${p.stock > 10 ? 'badge-success' : 'badge-warning'}">${p.stock > 10 ? 'In Stock' : 'Low Stock'}</span>
+                    </div>
+                `).join('') : '<div class="empty-state">No products yet</div>';
+                document.getElementById('productsList').innerHTML = html;
+            },
+            
+            renderCustomers: function() {
+                const html = this.data.customers.length ? this.data.customers.map(c => `
+                    <div class="card">
+                        <div class="card-header">
+                            <div><div class="card-title">${c.name}</div><div class="card-sub">${c.phone}</div></div>
+                        </div>
+                    </div>
+                `).join('') : '<div class="empty-state">No customers yet</div>';
+                document.getElementById('customersList').innerHTML = html;
+            },
+            
+            renderSales: function() {
+                const html = this.data.sales.length ? this.data.sales.map(s => `
+                    <div class="card">
+                        <div class="card-header">
+                            <div><div class="card-title">${s.customer_name}</div><div class="card-sub">${s.product_name}</div></div>
+                            <div class="card-amount">₦${(s.total || 0).toLocaleString()}</div>
+                        </div>
+                        <span class="badge badge-success">${s.payment_status}</span>
+                    </div>
+                `).join('') : '<div class="empty-state">No sales yet</div>';
+                document.getElementById('salesList').innerHTML = html;
+            },
+            
+            renderExpenses: function() {
+                const html = this.data.expenses.length ? this.data.expenses.map(e => `
+                    <div class="card">
+                        <div class="card-header">
+                            <div><div class="card-title">${e.description}</div><div class="card-sub">${new Date(e.date).toLocaleDateString()}</div></div>
+                            <div class="card-amount">₦${(e.amount || 0).toLocaleString()}</div>
+                        </div>
+                    </div>
+                `).join('') : '<div class="empty-state">No expenses yet</div>';
+                document.getElementById('expensesList').innerHTML = html;
+            },
+            
+            openForm: function(type) {
+                const customerOptions = this.data.customers.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
+                const productOptions = this.data.products.map(p => `<option value="${p.id}">${p.name} - ₦${p.price}</option>`).join('');
+                
+                const forms = {
+                    product: `<div class="form-header"><div class="form-title">Add Product</div><button class="close-btn" onclick="app.closeForm()"><svg class="close-icon" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button></div>
+                        <div class="form-group"><label class="form-label">Product Name</label><input type="text" class="form-input" id="productName" required></div>
+                        <div class="form-group"><label class="form-label">Price (₦)</label><input type="number" class="form-input" id="productPrice" required></div>
+                        <div class="form-group"><label class="form-label">Stock</label><input type="number" class="form-input" id="productStock" value="0"></div>
+                        <button class="btn btn-primary" onclick="app.saveProduct()">Save Product</button>`,
+                    
+                    customer: `<div class="form-header"><div class="form-title">Add Customer</div><button class="close-btn" onclick="app.closeForm()"><svg class="close-icon" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button></div>
+                        <div class="form-group"><label class="form-label">Name</label><input type="text" class="form-input" id="customerName" required></div>
+                        <div class="form-group"><label class="form-label">Phone</label><input type="tel" class="form-input" id="customerPhone" required></div>
+                        <button class="btn btn-primary" onclick="app.saveCustomer()">Save Customer</button>`,
+                    
+                    sale: `<div class="form-header"><div class="form-title">Add Sale</div><button class="close-btn" onclick="app.closeForm()"><svg class="close-icon" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button></div>
+                        <div class="toggle-group"><div class="toggle-option active" onclick="app.toggleCustomerType(true)">New Customer</div><div class="toggle-option" onclick="app.toggleCustomerType(false)">Existing</div></div>
+                        <div id="newCustomerFields"><div class="form-group"><label class="form-label">Name</label><input type="text" class="form-input" id="newCustomerName"></div><div class="form-group"><label class="form-label">Phone</label><input type="tel" class="form-input" id="newCustomerPhone"></div></div>
+                        <div id="existingCustomerField" style="display:none;"><div class="form-group"><label class="form-label">Customer</label><select class="form-select" id="existingCustomer">${customerOptions || '<option>No customers</option>'}</select></div></div>
+                        <div class="form-group"><label class="form-label">Product</label><select class="form-select" id="saleProduct">${productOptions || '<option>No products</option>'}</select></div>
+                        <div class="form-group"><label class="form-label">Quantity</label><input type="number" class="form-input" id="saleQuantity" value="1" min="1" onchange="app.calculateTotal()"></div>
+                        <div class="form-group"><label class="form-label">Total</label><input type="text" class="form-input" id="saleTotal" value="₦0" readonly></div>
+                        <div class="toggle-group"><div class="toggle-option active" onclick="app.setPaymentStatus('Paid')">Paid</div><div class="toggle-option" onclick="app.setPaymentStatus('Unpaid')">Unpaid</div></div>
+                        <button class="btn btn-primary" onclick="app.saveSale()">Save Sale</button>`,
+                    
+                    expense: `<div class="form-header"><div class="form-title">Add Expense</div><button class="close-btn" onclick="app.closeForm()"><svg class="close-icon" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button></div>
+                        <div class="form-group"><label class="form-label">Description</label><input type="text" class="form-input" id="expenseDesc" required></div>
+                        <div class="form-group"><label class="form-label">Amount (₦)</label><input type="number" class="form-input" id="expenseAmount" required></div>
+                        <div class="form-group"><label class="form-label">Date</label><input type="date" class="form-input" id="expenseDate" value="${new Date().toISOString().split('T')[0]}" required></div>
+                        <button class="btn btn-primary" onclick="app.saveExpense()">Save Expense</button>`
+                };
+                
+                this.els.formContainer.innerHTML = forms[type];
+                this.els.formModal.classList.add('show');
+                this.currentPaymentStatus = 'Paid';
+                setTimeout(() => this.calculateTotal(), 100);
+            },
+            
+            closeForm: function() {
+                this.els.formModal.classList.remove('show');
+            },
+            
+            toggleCustomerType: function(isNew) {
+                document.querySelectorAll('.toggle-option')[0].classList.toggle('active', isNew);
+                document.querySelectorAll('.toggle-option')[1].classList.toggle('active', !isNew);
+                document.getElementById('newCustomerFields').style.display = isNew ? 'block' : 'none';
+                document.getElementById('existingCustomerField').style.display = isNew ? 'none' : 'block';
+            },
+            
+            setPaymentStatus: function(status) {
+                this.currentPaymentStatus = status;
+                const btns = document.querySelectorAll('.toggle-option');
+                btns[btns.length - 2].classList.toggle('active', status === 'Paid');
+                btns[btns.length - 1].classList.toggle('active', status === 'Unpaid');
+            },
+            
+            calculateTotal: function() {
+                const sel = document.getElementById('saleProduct');
+                const qty = parseInt(document.getElementById('saleQuantity')?.value || 1);
+                if (sel?.value && this.data.products.length) {
+                    const product = this.data.products.find(p => p.id == sel.value);
+                    if (product) {
+                        document.getElementById('saleTotal').value = '₦' + (product.price * qty).toLocaleString();
+                    }
+                }
+            },
+            
+            async saveProduct() {
+                const name = document.getElementById('productName').value;
+                const price = parseFloat(document.getElementById('productPrice').value);
+                const stock = parseInt(document.getElementById('productStock').value) || 0;
+                
+                if (!name || !price) return alert('Please fill all fields');
+                
+                this.showLoading(true);
+                try {
+                    const { data, error } = await sb.from('products').insert({ name, price, stock }).select();
+                    if (error) throw error;
+                    this.data.products.push(data[0]);
+                    this.render();
+                    this.closeForm();
+                    alert('Product saved!');
+                } catch (error) {
+                    alert('Error: ' + error.message);
+                } finally {
+                    this.showLoading(false);
+                }
+            },
+            
+            async saveCustomer() {
+                const name = document.getElementById('customerName').value;
+                const phone = document.getElementById('customerPhone').value;
+                
+                if (!name || !phone) return alert('Please fill all fields');
+                
+                this.showLoading(true);
+                try {
+                    const { data, error } = await sb.from('customers').insert({ name, phone }).select();
+                    if (error) throw error;
+                    this.data.customers.push(data[0]);
+                    this.render();
+                    this.closeForm();
+                    alert('Customer saved!');
+                } catch (error) {
+                    alert('Error: ' + error.message);
+                } finally {
+                    this.showLoading(false);
+                }
+            },
+            
+            async saveSale() {
+                const isNew = document.querySelectorAll('.toggle-option')[0].classList.contains('active');
+                let customerName, customerId;
+                
+                if (isNew) {
+                    customerName = document.getElementById('newCustomerName').value;
+                    const phone = document.getElementById('newCustomerPhone').value;
+                    if (!customerName || !phone) return alert('Please fill customer details');
+                    
+                    const { data } = await sb.from('customers').insert({ name: customerName, phone }).select();
+                    if (data) customerId = data[0].id;
+                } else {
+                    customerId = document.getElementById('existingCustomer').value;
+                    customerName = this.data.customers.find(c => c.id == customerId)?.name;
+                }
+                
+                const prodSel = document.getElementById('saleProduct');
+                const product = this.data.products.find(p => p.id == prodSel.value);
+                const qty = parseInt(document.getElementById('saleQuantity').value);
+                const total = product.price * qty;
+                
+                this.showLoading(true);
+                try {
+                    const { data, error } = await sb.from('sales').insert({
+                        customer_id: customerId,
+                        customer_name: customerName,
+                        product_id: product.id,
+                        product_name: product.name,
+                        quantity: qty,
+                        total: total,
+                        payment_status: this.currentPaymentStatus
+                    }).select();
+                    
+                    if (error) throw error;
+                    this.data.sales.push(data[0]);
+                    await this.loadData();
+                    this.render();
+                    this.closeForm();
+                    alert('Sale saved!');
+                } catch (error) {
+                    alert('Error: ' + error.message);
+                } finally {
+                    this.showLoading(false);
+                }
+            },
+            
+            async saveExpense() {
+                const description = document.getElementById('expenseDesc').value;
+                const amount = parseFloat(document.getElementById('expenseAmount').value);
+                const date = document.getElementById('expenseDate').value;
+                
+                if (!description || !amount || !date) return alert('Please fill all fields');
+                
+                this.showLoading(true);
+                try {
+                    const { data, error } = await sb.from('expenses').insert({ description, amount, date }).select();
+                    if (error) throw error;
+                    this.data.expenses.push(data[0]);
+                    this.render();
+                    this.closeForm();
+                    alert('Expense saved!');
+                } catch (error) {
+                    alert('Error: ' + error.message);
+                }
