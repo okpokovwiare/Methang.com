@@ -1,0 +1,334 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Methang - Sales</title>
+    <link rel="icon" href="favicon.ico">
+    <link rel="apple-touch-icon" href="apple-touch-icon.png">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+        html { width: 100%; overflow-x: hidden; }
+        body { width: 100%; min-width: 0; max-width: 100vw; overflow-x: hidden; font-family: 'Inter', sans-serif; background: #F3F4F6; color: #1A1A1A; -webkit-font-smoothing: antialiased; padding: 16px 0 140px; }
+        
+        .content { width: 100%; max-width: 100%; padding: 0 16px 16px; overflow-x: hidden; }
+        
+        .header { margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; }
+        .header-title { font-size: 24px; font-weight: 700; }
+        
+        .back-btn { width: 35px; height: 35px; border-radius: 50%; background: white; border: none; box-shadow: 0 2px 4px rgba(0,0,0,0.08); display: flex; align-items: center; justify-content: center; cursor: pointer; flex-shrink: 0; }
+        .back-btn svg { width: 20px; height: 20px; stroke: #1A1A1A; stroke-width: 2; fill: none; }
+        .back-btn:active { transform: scale(0.95); }
+        
+        /* Stats Cards */
+        .stats { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; margin-bottom: 24px; }
+        .stat { background: white; border-radius: 16px; padding: 20px 16px; box-shadow: 0 2px 8px rgba(0,0,0,0.04); }
+        .stat-label { font-size: 13px; color: #6B7280; margin-bottom: 8px; font-weight: 500; }
+        .stat-value { font-size: 24px; font-weight: 700; color: #1A1A1A; }
+        .stat-change { font-size: 12px; margin-top: 4px; }
+        .stat-change.positive { color: #10B981; }
+        .stat-change.negative { color: #EF4444; }
+        
+        /* Filter Tabs */
+        .filter-tabs { display: flex; gap: 8px; margin-bottom: 16px; overflow-x: auto; padding-bottom: 4px; scrollbar-width: none; }
+        .filter-tabs::-webkit-scrollbar { display: none; }
+        .filter-tab { background: white; border: 1px solid #E5E7EB; border-radius: 20px; padding: 8px 16px; font-size: 14px; font-weight: 600; color: #6B7280; cursor: pointer; white-space: nowrap; flex-shrink: 0; }
+        .filter-tab.active { background: #000; color: white; border-color: #000; }
+        .filter-tab:active { transform: scale(0.98); }
+        
+        /* Sales List */
+        .section-title { font-size: 16px; font-weight: 700; margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center; }
+        
+        .sales-list { display: flex; flex-direction: column; gap: 12px; }
+        
+        .sale-card { background: white; border-radius: 16px; padding: 16px; box-shadow: 0 2px 8px rgba(0,0,0,0.04); cursor: pointer; }
+        .sale-card:active { transform: scale(0.98); }
+        
+        .sale-header { display: flex; justify-content: space-between; align-items: start; margin-bottom: 12px; }
+        .sale-info { flex: 1; }
+        .sale-id { font-size: 14px; font-weight: 700; color: #1A1A1A; margin-bottom: 4px; }
+        .sale-customer { font-size: 13px; color: #6B7280; }
+        .sale-amount { font-size: 18px; font-weight: 700; color: #1A1A1A; text-align: right; }
+        
+        .sale-details { display: flex; justify-content: space-between; align-items: center; padding-top: 12px; border-top: 1px solid #F3F4F6; }
+        .sale-date { font-size: 12px; color: #6B7280; }
+        .sale-items { font-size: 12px; color: #6B7280; }
+        .sale-status { padding: 4px 12px; border-radius: 12px; font-size: 11px; font-weight: 600; }
+        .sale-status.completed { background: #D1FAE5; color: #059669; }
+        .sale-status.pending { background: #FEF3C7; color: #D97706; }
+        .sale-status.cancelled { background: #FEE2E2; color: #DC2626; }
+        
+        /* Empty State */
+        .empty-state { text-align: center; padding: 60px 20px; }
+        .empty-icon { font-size: 64px; margin-bottom: 16px; opacity: 0.5; }
+        .empty-title { font-size: 18px; font-weight: 700; margin-bottom: 8px; color: #1A1A1A; }
+        .empty-text { font-size: 14px; color: #6B7280; margin-bottom: 24px; }
+        .empty-btn { background: #000; color: white; border: none; border-radius: 24px; padding: 12px 24px; font-size: 15px; font-weight: 600; cursor: pointer; }
+        .empty-btn:active { transform: scale(0.98); background: #1A1A1A; }
+        
+        /* Bottom Nav */
+        .bottom-nav { 
+            position: fixed; 
+            bottom: 0; 
+            left: 0; 
+            width: 100%; 
+            background: white; 
+            border-top: 1px solid #E5E7EB; 
+            z-index: 100;
+            padding-bottom: env(safe-area-inset-bottom);
+        }
+        
+        .checkout-nav-btn {
+            padding: 12px 16px 8px 16px;
+            background: white;
+            cursor: pointer;
+        }
+        
+        .checkout-btn-text {
+            background: #000;
+            color: white;
+            text-align: center;
+            padding: 14px;
+            border-radius: 24px;
+            font-size: 15px;
+            font-weight: 700;
+            letter-spacing: 0.5px;
+        }
+        
+        .checkout-nav-btn:active .checkout-btn-text {
+            transform: scale(0.98);
+            background: #1A1A1A;
+        }
+        
+        .nav-icons-row {
+            display: flex;
+            justify-content: space-around;
+            padding: 8px 0;
+        }
+        
+        .nav-item { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 8px; cursor: pointer; }
+        .nav-icon { width: 22px; height: 22px; stroke: #9CA3AF; stroke-width: 2; fill: none; stroke-linecap: round; stroke-linejoin: round; }
+        .nav-label { font-size: 11px; color: #9CA3AF; font-weight: 500; }
+        .nav-item.active .nav-icon { stroke: #000; }
+        .nav-item.active .nav-label { color: #000; }
+    </style>
+</head>
+<body>
+    <div class="content">
+        <!-- Header -->
+        <div class="header">
+            <button class="back-btn" onclick="window.location.href='home.html'">
+                <svg viewBox="0 0 24 24"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+            </button>
+            <div class="header-title">Sales</div>
+            <div style="width: 35px;"></div> <!-- Spacer -->
+        </div>
+
+        <!-- Stats Summary -->
+        <div class="stats">
+            <div class="stat">
+                <div class="stat-label">Today's Sales</div>
+                <div class="stat-value">₦0</div>
+                <div class="stat-change positive">+0% from yesterday</div>
+            </div>
+            <div class="stat">
+                <div class="stat-label">This Month</div>
+                <div class="stat-value">₦0</div>
+                <div class="stat-change positive">+0% from last month</div>
+            </div>
+            <div class="stat">
+                <div class="stat-label">Total Orders</div>
+                <div class="stat-value">0</div>
+                <div class="stat-change">0 pending</div>
+            </div>
+            <div class="stat">
+                <div class="stat-label">Avg. Order</div>
+                <div class="stat-value">₦0</div>
+                <div class="stat-change">--</div>
+            </div>
+        </div>
+
+        <!-- Filter Tabs -->
+        <div class="filter-tabs">
+            <div class="filter-tab active" data-filter="all">All</div>
+            <div class="filter-tab" data-filter="today">Today</div>
+            <div class="filter-tab" data-filter="week">This Week</div>
+            <div class="filter-tab" data-filter="month">This Month</div>
+            <div class="filter-tab" data-filter="completed">Completed</div>
+            <div class="filter-tab" data-filter="pending">Pending</div>
+            <div class="filter-tab" data-filter="cancelled">Cancelled</div>
+        </div>
+
+        <!-- Sales List -->
+        <div class="section-title">
+            <span>Recent Sales</span>
+            <span style="font-size: 13px; font-weight: 600; color: #6B7280;">0 orders</span>
+        </div>
+
+        <div class="sales-list" id="salesList">
+            <!-- Sales will be loaded here -->
+        </div>
+
+        <!-- Empty State -->
+        <div class="empty-state" id="emptyState">
+            <div class="empty-icon">🛒</div>
+            <div class="empty-title">No sales yet</div>
+            <div class="empty-text">Start making sales by going to checkout</div>
+            <button class="empty-btn" onclick="window.location.href='checkout.html'">Go to Checkout</button>
+        </div>
+    </div>
+
+    <!-- Bottom Navigation -->
+    <nav class="bottom-nav">
+        <!-- Checkout Button -->
+        <div class="checkout-nav-btn" onclick="window.location.href='checkout.html'">
+            <div class="checkout-btn-text">CHECK OUT</div>
+        </div>
+        
+        <!-- Nav Icons -->
+        <div class="nav-icons-row">
+            <div class="nav-item" onclick="window.location.href='home.html'">
+                <svg class="nav-icon" viewBox="0 0 24 24"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>
+                <div class="nav-label">Home</div>
+            </div>
+            <div class="nav-item active" onclick="window.location.href='sales.html'">
+                <svg class="nav-icon" viewBox="0 0 24 24"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/></svg>
+                <div class="nav-label">Sales</div>
+            </div>
+            <div class="nav-item" onclick="window.location.href='products.html'">
+                <svg class="nav-icon" viewBox="0 0 24 24"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>
+                <div class="nav-label">Products</div>
+            </div>
+            <div class="nav-item" onclick="window.location.href='expenses.html'">
+                <svg class="nav-icon" viewBox="0 0 24 24"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>
+                <div class="nav-label">Expenses</div>
+            </div>
+            <div class="nav-item" onclick="window.location.href='reports.html'">
+                <svg class="nav-icon" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+                <div class="nav-label">Reports</div>
+            </div>
+        </div>
+    </nav>
+
+    <script>
+        // Initialize Supabase
+        const SUPABASE_URL = 'https://kzamdgraevgyfxouasbw.supabase.co';
+        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imt6YW1kZ3JhZXZneWZ4b3Vhc2J3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzI3MDU4NTAsImV4cCI6MjA4ODI4MTg1MH0.u13iWMfs2qKrrx0eR6ka4PwwwtFP7GgYw-MmzBysT6M';
+        
+        let sbClient;
+        
+        // Check auth on page load
+        async function checkAuth() {
+            try {
+                if (!window.supabase || !window.supabase.createClient) {
+                    console.error('Supabase library not loaded');
+                    window.location.href = 'login.html';
+                    return;
+                }
+                
+                sbClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+                
+                const { data: { session }, error } = await sbClient.auth.getSession();
+                
+                if (error || !session) {
+                    console.log('No active session - redirecting to login');
+                    window.location.href = 'login.html';
+                    return;
+                }
+                
+                console.log('✅ User authenticated');
+                loadSales();
+            } catch (error) {
+                console.error('Auth check error:', error);
+                window.location.href = 'login.html';
+            }
+        }
+        
+        // Run auth check
+        checkAuth();
+        
+        // Sample sales data (will be replaced with Supabase data)
+        const sampleSales = [
+            {
+                id: 'ORD-001',
+                customer: 'John Doe',
+                amount: 25000,
+                items: 3,
+                date: '2024-03-11',
+                status: 'completed'
+            },
+            {
+                id: 'ORD-002',
+                customer: 'Jane Smith',
+                amount: 15000,
+                items: 2,
+                date: '2024-03-11',
+                status: 'pending'
+            },
+            {
+                id: 'ORD-003',
+                customer: 'Mike Johnson',
+                amount: 35000,
+                items: 5,
+                date: '2024-03-10',
+                status: 'completed'
+            }
+        ];
+        
+        // Load sales
+        function loadSales() {
+            const salesList = document.getElementById('salesList');
+            const emptyState = document.getElementById('emptyState');
+            
+            // TODO: Load from Supabase sales table
+            // For now, show empty state
+            const sales = [];
+            
+            if (sales.length === 0) {
+                salesList.style.display = 'none';
+                emptyState.style.display = 'block';
+            } else {
+                salesList.style.display = 'flex';
+                emptyState.style.display = 'none';
+                
+                salesList.innerHTML = sales.map(sale => `
+                    <div class="sale-card" onclick="viewSale('${sale.id}')">
+                        <div class="sale-header">
+                            <div class="sale-info">
+                                <div class="sale-id">${sale.id}</div>
+                                <div class="sale-customer">${sale.customer}</div>
+                            </div>
+                            <div class="sale-amount">₦${sale.amount.toLocaleString()}</div>
+                        </div>
+                        <div class="sale-details">
+                            <span class="sale-date">${sale.date}</span>
+                            <span class="sale-items">${sale.items} items</span>
+                            <span class="sale-status ${sale.status}">${sale.status}</span>
+                        </div>
+                    </div>
+                `).join('');
+            }
+        }
+        
+        // View sale details
+        function viewSale(saleId) {
+            // TODO: Navigate to sale detail page
+            alert(`View sale: ${saleId}`);
+        }
+        
+        // Filter tabs
+        document.querySelectorAll('.filter-tab').forEach(tab => {
+            tab.addEventListener('click', function() {
+                document.querySelectorAll('.filter-tab').forEach(t => t.classList.remove('active'));
+                this.classList.add('active');
+                
+                const filter = this.getAttribute('data-filter');
+                console.log('Filter by:', filter);
+                // TODO: Implement filtering
+            });
+        });
+    </script>
+</body>
+</html>
