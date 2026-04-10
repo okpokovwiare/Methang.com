@@ -1,0 +1,655 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <script>
+      if ("serviceWorker" in navigator) {
+        window.addEventListener("load", () => {
+          navigator.serviceWorker.register("/sw.js");
+        });
+      }
+    </script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Customers – Methang</title>
+    <link rel="icon" href="favicon.ico">
+    <link rel="apple-touch-icon" href="apple-touch-icon.png">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+        html { width: 100%; overflow-x: hidden; }
+        body { width: 100%; font-family: 'Inter', sans-serif; background: #E5E7EB; color: #1A1A1A; -webkit-font-smoothing: antialiased; padding: 16px 16px 32px; }
+
+        /* HEADER */
+        .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+        .header-title { font-size: 20px; font-weight: 700; color: #1A1A1A; }
+        .back-btn { width: 35px; height: 35px; border-radius: 50%; background: white; border: none; box-shadow: 0 2px 4px rgba(0,0,0,0.08); display: flex; align-items: center; justify-content: center; cursor: pointer; flex-shrink: 0; }
+        .back-btn svg { width: 20px; height: 20px; stroke: #1A1A1A; stroke-width: 2; fill: none; }
+        .back-btn:active { transform: scale(0.95); }
+        .add-btn { width: 35px; height: 35px; border-radius: 50%; background: #0075FF; border: none; box-shadow: 0 2px 8px rgba(0,117,255,0.3); display: flex; align-items: center; justify-content: center; cursor: pointer; flex-shrink: 0; }
+        .add-btn svg { width: 20px; height: 20px; stroke: white; stroke-width: 2.5; fill: none; }
+        .add-btn:active { transform: scale(0.95); }
+
+        /* SEARCH */
+        .search-wrap { position: relative; margin-bottom: 16px; }
+        .search-wrap input { width: 100%; background: white; border: 1.5px solid #E5E7EB; border-radius: 14px; padding: 12px 16px 12px 42px; font-size: 14px; font-family: 'Inter', sans-serif; color: #1A1A1A; outline: none; }
+        .search-wrap input:focus { border-color: #0075FF; }
+        .search-wrap input::placeholder { color: #9CA3AF; }
+        .search-icon { position: absolute; left: 14px; top: 50%; transform: translateY(-50%); width: 18px; height: 18px; stroke: #9CA3AF; stroke-width: 2; fill: none; pointer-events: none; }
+
+        /* SECTION */
+        .section-label { font-size: 13px; font-weight: 700; color: #6B7280; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 10px; }
+
+        /* CUSTOMER CARDS */
+        .customer-list { display: flex; flex-direction: column; gap: 10px; }
+        .customer-card { background: white; border-radius: 16px; padding: 14px 16px; box-shadow: 0 2px 8px rgba(0,0,0,0.04); display: flex; align-items: center; gap: 14px; cursor: pointer; transition: transform 0.1s; }
+        .customer-card:active { transform: scale(0.98); }
+        .customer-avatar { width: 44px; height: 44px; border-radius: 50%; background: #EFF6FF; display: flex; align-items: center; justify-content: center; font-size: 16px; font-weight: 700; color: #0075FF; flex-shrink: 0; }
+        .customer-info { flex: 1; min-width: 0; }
+        .customer-name { font-size: 15px; font-weight: 700; color: #1A1A1A; margin-bottom: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .customer-phone { font-size: 13px; color: #6B7280; }
+
+        /* LOADING */
+        .loading-state { text-align: center; padding: 60px 20px; }
+        .spinner { width: 32px; height: 32px; border: 3px solid #E5E7EB; border-top-color: #0075FF; border-radius: 50%; animation: spin 0.8s linear infinite; margin: 0 auto 12px; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        /* EMPTY STATE */
+        .empty-state { text-align: center; padding: 60px 20px; display: none; }
+        .empty-icon { font-size: 56px; margin-bottom: 12px; opacity: 0.5; }
+        .empty-title { font-size: 16px; font-weight: 700; margin-bottom: 6px; }
+        .empty-text { font-size: 13px; color: #6B7280; line-height: 1.5; }
+        .empty-btn { margin-top: 20px; background: #0075FF; color: white; border: none; border-radius: 12px; padding: 13px 28px; font-size: 14px; font-weight: 700; cursor: pointer; font-family: inherit; }
+
+        /* ADD CUSTOMER MODAL */
+        .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 300; align-items: flex-end; justify-content: center; }
+        .modal-overlay.show { display: flex; }
+        .modal-sheet { background: white; width: 100%; max-width: 480px; border-radius: 24px 24px 0 0; transform: translateY(100%); transition: transform 0.35s cubic-bezier(0.32, 0.72, 0, 1); max-height: 92dvh; display: flex; flex-direction: column; overflow: hidden; }
+        .modal-overlay.show .modal-sheet { transform: translateY(0); }
+
+        /* Sticky header */
+        .modal-header { flex-shrink: 0; background: white; padding: 0 20px 14px; border-bottom: 1px solid #F3F4F6; }
+        .modal-handle { width: 36px; height: 4px; background: #E5E7EB; border-radius: 2px; margin: 12px auto 14px; }
+        .modal-header-row { display: flex; justify-content: space-between; align-items: center; }
+        .modal-title { font-size: 18px; font-weight: 700; color: #1A1A1A; }
+        .modal-close-btn { width: 30px; height: 30px; border-radius: 50%; background: #F3F4F6; border: none; display: flex; align-items: center; justify-content: center; cursor: pointer; flex-shrink: 0; }
+        .modal-close-btn:active { background: #E5E7EB; }
+
+        /* Scrollable body */
+        .modal-body { flex: 1; overflow-y: auto; padding: 20px 20px 40px; -webkit-overflow-scrolling: touch; }
+
+        /* Form sections */
+        .form-section-label { font-size: 11px; font-weight: 700; color: #9CA3AF; text-transform: uppercase; letter-spacing: 0.6px; margin: 22px 0 12px; }
+        .form-section-label:first-child { margin-top: 0; }
+        .form-label { font-size: 13px; font-weight: 600; color: #374151; margin-bottom: 6px; display: block; }
+        .form-input { width: 100%; border: 1.5px solid #E5E7EB; border-radius: 12px; padding: 13px 14px; font-size: 15px; font-family: 'Inter', sans-serif; color: #1A1A1A; outline: none; margin-bottom: 14px; background: white; }
+        .form-input:focus { border-color: #0075FF; }
+        textarea.form-input { resize: none; }
+
+        /* Two-column row */
+        .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+        .form-col { display: flex; flex-direction: column; }
+        .form-col .form-input { margin-bottom: 14px; }
+
+        /* Phone selector */
+        .phone-row { display: flex; gap: 8px; margin-bottom: 14px; position: relative; }
+        .dial-selector { display: flex; align-items: center; gap: 5px; background: white; border: 1.5px solid #E5E7EB; border-radius: 12px; padding: 0 12px; cursor: pointer; flex-shrink: 0; white-space: nowrap; min-width: 90px; }
+        .dial-selector:active { background: #F9FAFB; }
+        .dial-flag { font-size: 18px; line-height: 1; }
+        .dial-code { font-size: 14px; font-weight: 600; color: #1A1A1A; }
+        .dial-chevron { width: 12px; height: 12px; stroke: #9CA3AF; stroke-width: 2; fill: none; flex-shrink: 0; transition: transform 0.2s; }
+        .dial-selector.open .dial-chevron { transform: rotate(180deg); }
+        .phone-row .form-input { flex: 1; margin-bottom: 0; }
+
+        /* Country dropdown — inline */
+        .country-dropdown { display: none; background: white; border: 1.5px solid #0075FF; border-radius: 12px; margin-top: 6px; margin-bottom: 14px; overflow: hidden; }
+        .country-dropdown.open { display: block; }
+        .country-search { width: 100%; border: none; border-bottom: 1px solid #F3F4F6; padding: 12px 14px; font-size: 14px; font-family: 'Inter', sans-serif; outline: none; color: #1A1A1A; }
+        .country-search::placeholder { color: #9CA3AF; }
+        .country-list { max-height: 200px; overflow-y: auto; }
+        .country-opt { display: flex; align-items: center; gap: 10px; padding: 11px 14px; cursor: pointer; font-size: 14px; font-weight: 500; color: #1A1A1A; }
+        .country-opt:hover { background: #F3F4F6; }
+        .country-opt.active { background: #EFF6FF; color: #0075FF; font-weight: 600; }
+        .country-opt-flag { font-size: 16px; flex-shrink: 0; }
+        .country-opt-name { flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .country-opt-dial { font-size: 12px; color: #6B7280; flex-shrink: 0; }
+        .country-divider { height: 1px; background: #F3F4F6; margin: 4px 0; }
+
+        /* Address country button */
+        .addr-country-btn { width: 100%; background: white; border: 1.5px solid #E5E7EB; border-radius: 12px; padding: 13px 14px; font-size: 15px; font-family: 'Inter', sans-serif; color: #1A1A1A; cursor: pointer; text-align: left; display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; }
+        .addr-country-btn.open { border-color: #0075FF; }
+        .addr-country-dropdown { display: none; background: white; border: 1.5px solid #0075FF; border-radius: 12px; margin-top: -10px; margin-bottom: 14px; overflow: hidden; }
+        .addr-country-dropdown.open { display: block; }
+
+        .save-btn { width: 100%; background: #0075FF; color: white; border: none; border-radius: 14px; padding: 15px; font-size: 16px; font-weight: 700; cursor: pointer; font-family: inherit; margin-top: 8px; }
+        .save-btn:active { opacity: 0.85; }
+        .save-btn:disabled { background: #D1D5DB; cursor: not-allowed; }
+
+        /* TOAST */
+        .toast { position: fixed; bottom: 100px; left: 50%; transform: translateX(-50%) translateY(20px); background: #1A1A1A; color: white; padding: 12px 20px; border-radius: 12px; font-size: 13px; font-weight: 600; opacity: 0; transition: all 0.3s; pointer-events: none; white-space: nowrap; z-index: 999; }
+        .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+        .toast.success { background: #059669; }
+        .toast.error { background: #DC2626; }
+    </style>
+</head>
+<body>
+
+    <!-- HEADER -->
+    <div class="header">
+        <button class="back-btn" onclick="window.history.back()">
+            <svg viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg>
+        </button>
+        <div class="header-title">Customers</div>
+        <button class="add-btn" onclick="openAddModal()">
+            <svg viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        </button>
+    </div>
+
+    <!-- SEARCH -->
+    <div class="search-wrap">
+        <svg class="search-icon" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+        <input type="text" id="searchInput" placeholder="Search by name or phone…" oninput="filterCustomers()">
+    </div>
+
+    <!-- LIST -->
+    <div class="section-label" id="sectionLabel">All Customers</div>
+    <div id="loadingState" class="loading-state">
+        <div class="spinner"></div>
+        <div style="font-size:14px;color:#6B7280;">Loading customers…</div>
+    </div>
+    <div class="customer-list" id="customerList"></div>
+    <div class="empty-state" id="emptyState">
+        <div class="empty-icon">👥</div>
+        <div class="empty-title">No customers yet</div>
+        <div class="empty-text">Add your first customer to get started.</div>
+        <button class="empty-btn" onclick="openAddModal()">+ Add Customer</button>
+    </div>
+
+    <!-- ADD CUSTOMER MODAL -->
+    <div class="modal-overlay" id="addModal" onclick="handleOverlayClick(event)">
+        <div class="modal-sheet">
+
+            <!-- STICKY HEADER -->
+            <div class="modal-header">
+                <div class="modal-handle"></div>
+                <div class="modal-header-row">
+                    <div class="modal-title">Add Customer</div>
+                    <button class="modal-close-btn" onclick="closeAddModal()">
+                        <svg style="width:14px;height:14px;stroke:#6B7280;stroke-width:2.5;fill:none;stroke-linecap:round;" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                    </button>
+                </div>
+            </div>
+
+            <!-- SCROLLABLE BODY -->
+            <div class="modal-body">
+
+                <!-- Customer Details -->
+                <div class="form-section-label">Customer Details</div>
+
+                <label class="form-label">Full Name <span style="color:#DC2626;">*</span></label>
+                <input class="form-input" type="text" id="nameInput" placeholder="e.g. Amaka Johnson" autocomplete="off">
+
+                <label class="form-label">Phone Number</label>
+                <div class="phone-row">
+                    <div class="dial-selector" id="dialSelector" onclick="toggleDialDropdown()">
+                        <span class="dial-flag" id="dialFlag">🇳🇬</span>
+                        <span class="dial-code" id="dialCode">+234</span>
+                        <svg class="dial-chevron" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg>
+                    </div>
+                    <input class="form-input" type="tel" id="phoneInput" placeholder="e.g. 8012345678" autocomplete="off">
+                </div>
+                <div class="country-dropdown" id="countryDropdown">
+                    <input class="country-search" id="countrySearch" type="text" placeholder="Search country…" oninput="filterCountryList()" onclick="event.stopPropagation()">
+                    <div class="country-list" id="countryList"></div>
+                </div>
+
+                <label class="form-label">Email Address</label>
+                <input class="form-input" type="email" id="emailInput" placeholder="e.g. amaka@email.com" autocomplete="off">
+
+                <!-- Business -->
+                <div class="form-section-label">Business</div>
+                <label class="form-label">Business Name</label>
+                <input class="form-input" type="text" id="bizInput" placeholder="e.g. Amaka Stores" autocomplete="off">
+
+                <!-- Address -->
+                <div class="form-section-label">Address</div>
+
+                <label class="form-label">Address 1</label>
+                <input class="form-input" type="text" id="address1Input" placeholder="e.g. 12 Market Road" autocomplete="off">
+
+                <label class="form-label">Address 2</label>
+                <input class="form-input" type="text" id="address2Input" placeholder="Apartment, suite, floor (optional)" autocomplete="off">
+
+                <div class="form-row">
+                    <div class="form-col">
+                        <label class="form-label">City</label>
+                        <input class="form-input" type="text" id="cityInput" placeholder="City" autocomplete="off">
+                    </div>
+                    <div class="form-col">
+                        <label class="form-label">State</label>
+                        <input class="form-input" type="text" id="stateInput" placeholder="State" autocomplete="off">
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-col">
+                        <label class="form-label">ZIP / Postal Code</label>
+                        <input class="form-input" type="text" id="zipInput" placeholder="ZIP" autocomplete="off">
+                    </div>
+                    <div class="form-col">
+                        <label class="form-label">Country</label>
+                        <button class="addr-country-btn" id="addrCountryBtn" onclick="toggleAddrCountry()">
+                            <span id="addrCountryText">Nigeria</span>
+                            <svg style="width:12px;height:12px;stroke:#9CA3AF;stroke-width:2;fill:none;flex-shrink:0;" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg>
+                        </button>
+                    </div>
+                </div>
+                <div class="addr-country-dropdown" id="addrCountryDropdown">
+                    <input class="country-search" id="addrCountrySearch" type="text" placeholder="Search country…" oninput="filterAddrCountry()" onclick="event.stopPropagation()">
+                    <div class="country-list" id="addrCountryList"></div>
+                </div>
+
+                <!-- Additional Information -->
+                <div class="form-section-label">Additional Information</div>
+                <textarea class="form-input" id="additionalInput" placeholder="Any extra info about this customer…" rows="3"></textarea>
+
+                <button class="save-btn" id="saveBtn" onclick="saveCustomer()">Save Customer</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="toast" id="toast"></div>
+
+    <script>
+        const SUPABASE_URL      = 'https://ufcpvbabgtftyfumzpnp.supabase.co';
+        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVmY3B2YmFiZ3RmdHlmdW16cG5wIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ4ODEwMzcsImV4cCI6MjA5MDQ1NzAzN30.TzFJxnc8_ykXegNo2oMlN0xHXPkwHQcYNMAFMJorq5U';
+        const db = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+        let currentUser = null;
+        let allCustomers = [];
+        let filtered = [];
+
+        // Detect if coming from record-sale (picker mode) — URL param works across all WebView contexts
+        const FROM_RECORD_SALE = new URLSearchParams(window.location.search).get('picking') === 'true';
+        const FROM_CHECKOUT = sessionStorage.getItem('fromCheckout') === 'true';
+
+        async function init() {
+            const { data: { session } } = await db.auth.getSession();
+            if (!session) { window.location.href = 'login.html'; return; }
+            currentUser = session.user;
+            await loadCustomers();
+        }
+
+        async function loadCustomers() {
+            document.getElementById('loadingState').style.display = 'block';
+            document.getElementById('customerList').innerHTML = '';
+            document.getElementById('emptyState').style.display = 'none';
+
+            const { data, error } = await db
+                .from('customers')
+                .select('*')
+                .eq('user_id', currentUser.id)
+                .order('name');
+
+            document.getElementById('loadingState').style.display = 'none';
+
+            if (error) { showToast('Failed to load customers', 'error'); return; }
+
+            allCustomers = data || [];
+            filtered = [...allCustomers];
+            renderList(filtered);
+        }
+
+        function initials(name) {
+            return name.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2);
+        }
+
+        function renderList(list) {
+            const container = document.getElementById('customerList');
+            const empty     = document.getElementById('emptyState');
+            const label     = document.getElementById('sectionLabel');
+
+            if (list.length === 0) {
+                container.innerHTML = '';
+                empty.style.display = 'block';
+                label.textContent = 'No results';
+                return;
+            }
+
+            empty.style.display = 'none';
+            label.textContent = `${list.length} Customer${list.length !== 1 ? 's' : ''}`;
+
+            container.innerHTML = list.map(c => {
+                const sub = c.business_name ? c.business_name : (c.phone || c.email || 'No contact');
+                return `
+                <div class="customer-card" onclick="handleCardClick(${JSON.stringify(c).replace(/"/g, '&quot;')})">
+                    <div class="customer-avatar">${initials(c.name)}</div>
+                    <div class="customer-info">
+                        <div class="customer-name">${c.name}</div>
+                        <div class="customer-phone">${sub}</div>
+                    </div>
+                    <svg style="width:18px;height:18px;stroke:#D1D5DB;stroke-width:2;fill:none;flex-shrink:0;" viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></svg>
+                </div>`;
+            }).join('');
+        }
+
+        function handleCardClick(c) {
+            if (FROM_RECORD_SALE) {
+                // Coming from record-sale — pass customer back via URL params (works in all WebView contexts)
+                const params = new URLSearchParams({ cid: c.id, cname: c.name, cphone: c.phone || 'N/A' });
+                window.location.href = 'record-sale.html?' + params.toString();
+            } else if (FROM_CHECKOUT) {
+                // Coming from checkout — select customer and return
+                sessionStorage.removeItem('fromCheckout');
+                sessionStorage.setItem('selectedCustomer', JSON.stringify({ id: c.id, name: c.name, phone: c.phone || 'N/A' }));
+                window.location.href = 'record-sale.html';
+            } else {
+                // Normal — open customer detail
+                sessionStorage.setItem('previewCustomer', JSON.stringify(c));
+                window.location.href = 'customer-detail.html';
+            }
+        }
+
+        function filterCustomers() {
+            const term = document.getElementById('searchInput').value.toLowerCase().trim();
+            filtered = term
+                ? allCustomers.filter(c =>
+                    c.name.toLowerCase().includes(term) ||
+                    (c.phone && c.phone.includes(term)) ||
+                    (c.business_name && c.business_name.toLowerCase().includes(term)))
+                : [...allCustomers];
+            renderList(filtered);
+        }
+
+        // ── Country Data ─────────────────────────────────────────────────
+        const POPULAR_COUNTRIES = [
+            { flag:'🇳🇬', name:'Nigeria',        dial:'+234' },
+            { flag:'🇬🇭', name:'Ghana',          dial:'+233' },
+            { flag:'🇰🇪', name:'Kenya',          dial:'+254' },
+            { flag:'🇿🇦', name:'South Africa',   dial:'+27'  },
+            { flag:'🇺🇸', name:'United States',  dial:'+1'   },
+            { flag:'🇬🇧', name:'United Kingdom', dial:'+44'  },
+        ];
+        const ALL_COUNTRIES = [
+            { flag:'🇦🇫', name:'Afghanistan', dial:'+93' },{ flag:'🇦🇱', name:'Albania', dial:'+355' },
+            { flag:'🇩🇿', name:'Algeria', dial:'+213' },{ flag:'🇦🇴', name:'Angola', dial:'+244' },
+            { flag:'🇦🇷', name:'Argentina', dial:'+54' },{ flag:'🇦🇲', name:'Armenia', dial:'+374' },
+            { flag:'🇦🇺', name:'Australia', dial:'+61' },{ flag:'🇦🇹', name:'Austria', dial:'+43' },
+            { flag:'🇧🇭', name:'Bahrain', dial:'+973' },{ flag:'🇧🇩', name:'Bangladesh', dial:'+880' },
+            { flag:'🇧🇪', name:'Belgium', dial:'+32' },{ flag:'🇧🇯', name:'Benin', dial:'+229' },
+            { flag:'🇧🇷', name:'Brazil', dial:'+55' },{ flag:'🇧🇫', name:'Burkina Faso', dial:'+226' },
+            { flag:'🇨🇲', name:'Cameroon', dial:'+237' },{ flag:'🇨🇦', name:'Canada', dial:'+1' },
+            { flag:'🇨🇻', name:'Cape Verde', dial:'+238' },{ flag:'🇹🇩', name:'Chad', dial:'+235' },
+            { flag:'🇨🇱', name:'Chile', dial:'+56' },{ flag:'🇨🇳', name:'China', dial:'+86' },
+            { flag:'🇨🇴', name:'Colombia', dial:'+57' },{ flag:'🇨🇬', name:'Congo', dial:'+242' },
+            { flag:'🇨🇩', name:'Congo (DRC)', dial:'+243' },{ flag:'🇨🇮', name:"Côte d'Ivoire", dial:'+225' },
+            { flag:'🇨🇿', name:'Czech Republic', dial:'+420' },{ flag:'🇩🇰', name:'Denmark', dial:'+45' },
+            { flag:'🇪🇬', name:'Egypt', dial:'+20' },{ flag:'🇪🇹', name:'Ethiopia', dial:'+251' },
+            { flag:'🇫🇮', name:'Finland', dial:'+358' },{ flag:'🇫🇷', name:'France', dial:'+33' },
+            { flag:'🇬🇦', name:'Gabon', dial:'+241' },{ flag:'🇬🇲', name:'Gambia', dial:'+220' },
+            { flag:'🇩🇪', name:'Germany', dial:'+49' },{ flag:'🇬🇳', name:'Guinea', dial:'+224' },
+            { flag:'🇭🇹', name:'Haiti', dial:'+509' },{ flag:'🇮🇳', name:'India', dial:'+91' },
+            { flag:'🇮🇩', name:'Indonesia', dial:'+62' },{ flag:'🇮🇷', name:'Iran', dial:'+98' },
+            { flag:'🇮🇶', name:'Iraq', dial:'+964' },{ flag:'🇮🇪', name:'Ireland', dial:'+353' },
+            { flag:'🇮🇱', name:'Israel', dial:'+972' },{ flag:'🇮🇹', name:'Italy', dial:'+39' },
+            { flag:'🇯🇲', name:'Jamaica', dial:'+1876' },{ flag:'🇯🇵', name:'Japan', dial:'+81' },
+            { flag:'🇯🇴', name:'Jordan', dial:'+962' },{ flag:'🇱🇷', name:'Liberia', dial:'+231' },
+            { flag:'🇱🇾', name:'Libya', dial:'+218' },{ flag:'🇲🇬', name:'Madagascar', dial:'+261' },
+            { flag:'🇲🇼', name:'Malawi', dial:'+265' },{ flag:'🇲🇾', name:'Malaysia', dial:'+60' },
+            { flag:'🇲🇱', name:'Mali', dial:'+223' },{ flag:'🇲🇦', name:'Morocco', dial:'+212' },
+            { flag:'🇲🇿', name:'Mozambique', dial:'+258' },{ flag:'🇳🇦', name:'Namibia', dial:'+264' },
+            { flag:'🇳🇱', name:'Netherlands', dial:'+31' },{ flag:'🇳🇿', name:'New Zealand', dial:'+64' },
+            { flag:'🇳🇪', name:'Niger', dial:'+227' },{ flag:'🇳🇴', name:'Norway', dial:'+47' },
+            { flag:'🇵🇰', name:'Pakistan', dial:'+92' },{ flag:'🇵🇭', name:'Philippines', dial:'+63' },
+            { flag:'🇵🇱', name:'Poland', dial:'+48' },{ flag:'🇵🇹', name:'Portugal', dial:'+351' },
+            { flag:'🇷🇴', name:'Romania', dial:'+40' },{ flag:'🇷🇺', name:'Russia', dial:'+7' },
+            { flag:'🇷🇼', name:'Rwanda', dial:'+250' },{ flag:'🇸🇦', name:'Saudi Arabia', dial:'+966' },
+            { flag:'🇸🇳', name:'Senegal', dial:'+221' },{ flag:'🇸🇱', name:'Sierra Leone', dial:'+232' },
+            { flag:'🇸🇬', name:'Singapore', dial:'+65' },{ flag:'🇸🇴', name:'Somalia', dial:'+252' },
+            { flag:'🇪🇸', name:'Spain', dial:'+34' },{ flag:'🇸🇩', name:'Sudan', dial:'+249' },
+            { flag:'🇸🇪', name:'Sweden', dial:'+46' },{ flag:'🇨🇭', name:'Switzerland', dial:'+41' },
+            { flag:'🇹🇿', name:'Tanzania', dial:'+255' },{ flag:'🇹🇭', name:'Thailand', dial:'+66' },
+            { flag:'🇹🇬', name:'Togo', dial:'+228' },{ flag:'🇹🇳', name:'Tunisia', dial:'+216' },
+            { flag:'🇹🇷', name:'Turkey', dial:'+90' },{ flag:'🇺🇬', name:'Uganda', dial:'+256' },
+            { flag:'🇦🇪', name:'United Arab Emirates', dial:'+971' },{ flag:'🇺🇦', name:'Ukraine', dial:'+380' },
+            { flag:'🇻🇳', name:'Vietnam', dial:'+84' },{ flag:'🇾🇪', name:'Yemen', dial:'+967' },
+            { flag:'🇿🇲', name:'Zambia', dial:'+260' },{ flag:'🇿🇼', name:'Zimbabwe', dial:'+263' },
+        ].sort((a,b) => a.name.localeCompare(b.name));
+
+        let selectedDial = { flag:'🇳🇬', name:'Nigeria', dial:'+234' };
+        let selectedAddrCountry = 'Nigeria';
+
+        function buildCountryList(filter = '') {
+            const term = filter.toLowerCase();
+            const popular = POPULAR_COUNTRIES.filter(c => !term || c.name.toLowerCase().includes(term) || c.dial.includes(term));
+            const rest    = ALL_COUNTRIES.filter(c => !term || c.name.toLowerCase().includes(term) || c.dial.includes(term));
+            let html = popular.map(c => countryOptHTML(c)).join('');
+            if (!term && rest.length) html += `<div class="country-divider"></div>`;
+            html += rest.map(c => countryOptHTML(c)).join('');
+            document.getElementById('countryList').innerHTML = html || '<div style="padding:12px 14px;font-size:13px;color:#9CA3AF;">No results</div>';
+        }
+
+        function countryOptHTML(c) {
+            const active = c.name === selectedDial.name ? ' active' : '';
+            return `<div class="country-opt${active}" onclick="selectDial(${JSON.stringify(c).replace(/"/g,'&quot;')})">
+                <span class="country-opt-flag">${c.flag}</span>
+                <span class="country-opt-name">${c.name}</span>
+                <span class="country-opt-dial">${c.dial}</span>
+            </div>`;
+        }
+
+        function toggleDialDropdown() {
+            const dd  = document.getElementById('countryDropdown');
+            const sel = document.getElementById('dialSelector');
+            const isOpen = dd.classList.contains('open');
+            closeAllDropdowns();
+            if (!isOpen) {
+                buildCountryList();
+                dd.classList.add('open');
+                sel.classList.add('open');
+                setTimeout(() => {
+                    document.getElementById('countrySearch').focus();
+                    dd.scrollIntoView({ behavior:'smooth', block:'nearest' });
+                }, 100);
+            }
+        }
+
+        function selectDial(c) {
+            selectedDial = c;
+            document.getElementById('dialFlag').textContent = c.flag;
+            document.getElementById('dialCode').textContent = c.dial;
+            closeAllDropdowns();
+        }
+
+        function filterCountryList() {
+            buildCountryList(document.getElementById('countrySearch').value);
+        }
+
+        function buildAddrCountryList(filter = '') {
+            const term    = filter.toLowerCase();
+            const popular = POPULAR_COUNTRIES.filter(c => !term || c.name.toLowerCase().includes(term));
+            const rest    = ALL_COUNTRIES.filter(c => !term || c.name.toLowerCase().includes(term));
+            let html = popular.map(c => addrOptHTML(c.name)).join('');
+            if (!term && rest.length) html += `<div class="country-divider"></div>`;
+            html += rest.map(c => addrOptHTML(c.name)).join('');
+            document.getElementById('addrCountryList').innerHTML = html || '<div style="padding:12px 14px;font-size:13px;color:#9CA3AF;">No results</div>';
+        }
+
+        function addrOptHTML(name) {
+            const active = name === selectedAddrCountry ? ' active' : '';
+            return `<div class="country-opt${active}" onclick="selectAddrCountry('${name.replace(/'/g,"\\'")}')">
+                <span class="country-opt-name">${name}</span>
+            </div>`;
+        }
+
+        function toggleAddrCountry() {
+            const dd  = document.getElementById('addrCountryDropdown');
+            const btn = document.getElementById('addrCountryBtn');
+            const isOpen = dd.classList.contains('open');
+            closeAllDropdowns();
+            if (!isOpen) {
+                document.getElementById('addrCountrySearch').value = '';
+                buildAddrCountryList();
+                dd.classList.add('open');
+                btn.classList.add('open');
+                setTimeout(() => {
+                    document.getElementById('addrCountrySearch').focus();
+                    dd.scrollIntoView({ behavior:'smooth', block:'nearest' });
+                }, 100);
+            }
+        }
+
+        function selectAddrCountry(name) {
+            selectedAddrCountry = name;
+            document.getElementById('addrCountryText').textContent = name;
+            closeAllDropdowns();
+        }
+
+        function filterAddrCountry() {
+            buildAddrCountryList(document.getElementById('addrCountrySearch').value);
+        }
+
+        function closeAllDropdowns() {
+            document.getElementById('countryDropdown').classList.remove('open');
+            document.getElementById('dialSelector').classList.remove('open');
+            document.getElementById('addrCountryDropdown').classList.remove('open');
+            document.getElementById('addrCountryBtn').classList.remove('open');
+        }
+
+        // ── Add Modal ─────────────────────────────────────────────────────
+        function openAddModal() {
+            ['nameInput','phoneInput','emailInput','bizInput',
+             'address1Input','address2Input','cityInput','stateInput',
+             'zipInput','additionalInput'].forEach(id => {
+                const el = document.getElementById(id);
+                if (el) el.value = '';
+            });
+            selectedDial = { flag:'🇳🇬', name:'Nigeria', dial:'+234' };
+            selectedAddrCountry = 'Nigeria';
+            document.getElementById('dialFlag').textContent = '🇳🇬';
+            document.getElementById('dialCode').textContent = '+234';
+            document.getElementById('addrCountryText').textContent = 'Nigeria';
+            document.getElementById('countrySearch').value = '';
+            closeAllDropdowns();
+            document.getElementById('addModal').classList.add('show');
+            setTimeout(() => document.getElementById('nameInput').focus(), 400);
+        }
+
+        function closeAddModal() {
+            closeAllDropdowns();
+            document.getElementById('addModal').classList.remove('show');
+        }
+
+        function handleOverlayClick(e) {
+            if (e.target === document.getElementById('addModal')) closeAddModal();
+        }
+
+        async function saveCustomer() {
+            const name       = document.getElementById('nameInput').value.trim();
+            const phone      = document.getElementById('phoneInput').value.trim();
+            const fullPhone  = phone ? selectedDial.dial + phone : null;
+            const email      = document.getElementById('emailInput').value.trim();
+            const biz        = document.getElementById('bizInput').value.trim();
+            const address1   = document.getElementById('address1Input').value.trim();
+            const address2   = document.getElementById('address2Input').value.trim();
+            const city       = document.getElementById('cityInput').value.trim();
+            const state      = document.getElementById('stateInput').value.trim();
+            const zip        = document.getElementById('zipInput').value.trim();
+            const country    = selectedAddrCountry;
+            const additional = document.getElementById('additionalInput').value.trim();
+
+            if (!name) { showToast('Please enter a name', 'error'); return; }
+
+            const btn = document.getElementById('saveBtn');
+            btn.disabled = true;
+            btn.textContent = 'Saving…';
+
+            // Compose a combined address for the legacy `address` column
+            const addressParts = [address1, address2, city, state, zip, country].filter(Boolean);
+            const addressCombined = addressParts.join(', ');
+
+            const { data, error } = await db
+                .from('customers')
+                .insert([{
+                    user_id: currentUser.id,
+                    name,
+                    phone:         fullPhone  || null,
+                    email:         email      || null,
+                    business_name: biz        || null,
+                    address:       addressCombined || null,
+                    notes:         additional || null,
+                    // Extended fields (require migration if not yet added)
+                    address1:      address1   || null,
+                    address2:      address2   || null,
+                    city:          city       || null,
+                    state:         state      || null,
+                    zip:           zip        || null,
+                    country:       country    || null,
+                    additional:    additional || null,
+                    dial_flag:     selectedDial.flag,
+                    dial_code:     selectedDial.dial,
+                }])
+                .select()
+                .single();
+
+            btn.disabled = false;
+            btn.textContent = 'Save Customer';
+
+            if (error) {
+                // Retry with only base columns if extended columns don't exist yet
+                const { data: d2, error: e2 } = await db
+                    .from('customers')
+                    .insert([{
+                        user_id: currentUser.id,
+                        name,
+                        phone:         fullPhone  || null,
+                        email:         email      || null,
+                        business_name: biz        || null,
+                        address:       addressCombined || null,
+                        notes:         additional || null,
+                    }])
+                    .select()
+                    .single();
+
+                if (e2) { showToast('Failed to save customer', 'error'); return; }
+
+                showToast('Customer added!', 'success');
+                closeAddModal();
+                allCustomers.unshift(d2);
+                filtered = [...allCustomers];
+                document.getElementById('searchInput').value = '';
+                renderList(filtered);
+                return;
+            }
+
+            showToast('Customer added!', 'success');
+            closeAddModal();
+            allCustomers.unshift(data);
+            filtered = [...allCustomers];
+            document.getElementById('searchInput').value = '';
+            renderList(filtered);
+        }
+
+        // ── Toast ───────────────────────────────────────────────────────
+        function showToast(msg, type = '') {
+            const t = document.getElementById('toast');
+            t.textContent = msg;
+            t.className = `toast ${type} show`;
+            setTimeout(() => t.className = `toast ${type}`, 2800);
+        }
+
+        document.addEventListener('click', e => {
+            if (!e.target.closest('.phone-row') && !e.target.closest('.country-dropdown') &&
+                !e.target.closest('.addr-country-btn') && !e.target.closest('.addr-country-dropdown')) {
+                closeAllDropdowns();
+            }
+        });
+
+        document.getElementById('nameInput').addEventListener('keydown', e => {
+            if (e.key === 'Enter') document.getElementById('phoneInput').focus();
+        });
+
+        init();
+    </script>
+</body>
+</html>

@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <script>
+      if ("serviceWorker" in navigator) {
+        window.addEventListener("load", () => {
+          navigator.serviceWorker.register("/sw.js");
+        });
+      }
+    </script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Methang</title>
+    <link rel="icon" href="favicon.ico">
+    <link rel="apple-touch-icon" href="apple-touch-icon.png">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        html, body {
+            width: 100%; height: 100%;
+            background: #000000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: -apple-system, BlinkMacSystemFont, 'Inter', sans-serif;
+            overflow: hidden;
+        }
+        .splash {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 16px;
+            animation: fadeIn 0.4s ease;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: scale(0.95); }
+            to   { opacity: 1; transform: scale(1); }
+        }
+        .logo {
+            width: 90px;
+            height: 90px;
+            object-fit: contain;
+        }
+        .brand-name {
+            font-size: 22px;
+            font-weight: 800;
+            color: white;
+            letter-spacing: 3px;
+            text-transform: uppercase;
+        }
+        .spinner {
+            width: 28px;
+            height: 28px;
+            border: 3px solid rgba(255,255,255,0.15);
+            border-top-color: #0075FF;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+            margin-top: 8px;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+    </style>
+</head>
+<body>
+    <div class="splash">
+        <img src="logo.png" alt="Methang" class="logo">
+        <div class="brand-name">Methang</div>
+        <div class="spinner"></div>
+    </div>
+
+    <script>
+        async function init() {
+            try {
+                const sb = window.supabase.createClient(
+                    'https://ufcpvbabgtftyfumzpnp.supabase.co',
+                    'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVmY3B2YmFiZ3RmdHlmdW16cG5wIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ4ODEwMzcsImV4cCI6MjA5MDQ1NzAzN30.TzFJxnc8_ykXegNo2oMlN0xHXPkwHQcYNMAFMJorq5U'
+                );
+                const { data: { session } } = await sb.auth.getSession();
+                if (session) {
+                    window.location.replace('home.html');
+                } else {
+                    window.location.replace('login.html');
+                }
+            } catch (e) {
+                window.location.replace('login.html');
+            }
+        }
+
+        // Show splash for at least 800ms so it's visible
+        setTimeout(init, 800);
+    </script>
+</body>
+</html>

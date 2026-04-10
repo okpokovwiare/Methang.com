@@ -1,0 +1,151 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" width="200" height="200">
+  <defs>
+
+    <!-- Clip to orb -->
+    <clipPath id="orbClip">
+      <circle cx="100" cy="100" r="70"/>
+    </clipPath>
+
+    <!-- Soft feathered mask for orb edge -->
+    <radialGradient id="edgeFade" cx="50%" cy="50%" r="50%">
+      <stop offset="70%"  stop-color="white" stop-opacity="1"/>
+      <stop offset="88%"  stop-color="white" stop-opacity="0.6"/>
+      <stop offset="100%" stop-color="white" stop-opacity="0"/>
+    </radialGradient>
+    <mask id="softEdge">
+      <circle cx="100" cy="100" r="80" fill="url(#edgeFade)"/>
+    </mask>
+
+    <!-- Liquid aurora warp -->
+    <filter id="aurora" color-interpolation-filters="sRGB">
+      <feTurbulence type="fractalNoise" baseFrequency="0.015" numOctaves="3" seed="4" result="noise">
+        <animate attributeName="seed"          values="4;9;2;7;4"                      dur="22s" repeatCount="indefinite"/>
+        <animate attributeName="baseFrequency" values="0.015;0.02;0.013;0.017;0.015"  dur="18s" repeatCount="indefinite"/>
+      </feTurbulence>
+      <feDisplacementMap in="SourceGraphic" in2="noise" scale="18" xChannelSelector="R" yChannelSelector="G"/>
+    </filter>
+
+    <!-- Heavy blob softness -->
+    <filter id="blobBlur">
+      <feGaussianBlur stdDeviation="16"/>
+    </filter>
+
+    <!-- Extra soft for outer glow -->
+    <filter id="outerGlow">
+      <feGaussianBlur stdDeviation="8"/>
+    </filter>
+
+    <!-- Gloss top layer -->
+    <radialGradient id="gloss" cx="38%" cy="30%" r="44%">
+      <stop offset="0%"   stop-color="#FFFFFF" stop-opacity="0.75"/>
+      <stop offset="50%"  stop-color="#FFFFFF" stop-opacity="0.1"/>
+      <stop offset="100%" stop-color="#FFFFFF" stop-opacity="0"/>
+    </radialGradient>
+
+    <style>
+      /* Very slow organic blob movement */
+      .b1 { animation: b1move 20s ease-in-out infinite, b1color 16s ease-in-out infinite; transform-origin: 100px 100px; }
+      .b2 { animation: b2move 26s ease-in-out infinite, b2color 20s ease-in-out infinite; transform-origin: 100px 100px; }
+      .b3 { animation: b3move 18s ease-in-out infinite, b3color 14s ease-in-out infinite; transform-origin: 100px 100px; }
+      .b4 { animation: b4move 22s ease-in-out infinite, b4color 18s ease-in-out infinite; transform-origin: 100px 100px; }
+      .b5 { animation: b5move 30s ease-in-out infinite, b5color 24s ease-in-out infinite; transform-origin: 100px 100px; }
+
+      @keyframes b1move {
+        0%   { transform: translate(0px, 0px); }
+        25%  { transform: translate(18px, -14px); }
+        50%  { transform: translate(-10px, 16px); }
+        75%  { transform: translate(-16px, -8px); }
+        100% { transform: translate(0px, 0px); }
+      }
+      @keyframes b2move {
+        0%   { transform: translate(0px, 0px); }
+        30%  { transform: translate(-18px, 14px); }
+        60%  { transform: translate(14px, 10px); }
+        100% { transform: translate(0px, 0px); }
+      }
+      @keyframes b3move {
+        0%   { transform: translate(0px, 0px); }
+        20%  { transform: translate(12px, 18px); }
+        55%  { transform: translate(-14px, -12px); }
+        80%  { transform: translate(8px, -16px); }
+        100% { transform: translate(0px, 0px); }
+      }
+      @keyframes b4move {
+        0%   { transform: translate(0px, 0px); }
+        35%  { transform: translate(-12px, -18px); }
+        70%  { transform: translate(16px, 12px); }
+        100% { transform: translate(0px, 0px); }
+      }
+      @keyframes b5move {
+        0%   { transform: translate(0px, 0px); }
+        40%  { transform: translate(14px, -10px); }
+        80%  { transform: translate(-10px, 14px); }
+        100% { transform: translate(0px, 0px); }
+      }
+
+      /* Pastel color shifts — blue, lavender, rose, periwinkle */
+      @keyframes b1color {
+        0%   { fill: #A8C8FF; }
+        33%  { fill: #C8A8FF; }
+        66%  { fill: #FFA8D8; }
+        100% { fill: #A8C8FF; }
+      }
+      @keyframes b2color {
+        0%   { fill: #B8AAFF; }
+        33%  { fill: #FFB8D8; }
+        66%  { fill: #A8DDFF; }
+        100% { fill: #B8AAFF; }
+      }
+      @keyframes b3color {
+        0%   { fill: #FFB0CC; }
+        33%  { fill: #A0C4FF; }
+        66%  { fill: #D0A8FF; }
+        100% { fill: #FFB0CC; }
+      }
+      @keyframes b4color {
+        0%   { fill: #AADDFF; }
+        50%  { fill: #FFAACC; }
+        100% { fill: #AADDFF; }
+      }
+      @keyframes b5color {
+        0%   { fill: #D4B0FF; }
+        50%  { fill: #B0D8FF; }
+        100% { fill: #D4B0FF; }
+      }
+
+      .ambient { animation: ambientPulse 6s ease-in-out infinite; }
+      @keyframes ambientPulse {
+        0%, 100% { opacity: 0.18; }
+        50%       { opacity: 0.32; }
+      }
+    </style>
+
+  </defs>
+
+  <!-- Soft ambient outer glow -->
+  <circle cx="100" cy="102" r="82" fill="#C0AAFF" class="ambient" filter="url(#outerGlow)"/>
+
+  <!-- All content inside orb with soft feathered edge mask -->
+  <g mask="url(#softEdge)">
+
+    <!-- White base of orb -->
+    <circle cx="100" cy="100" r="80" fill="white" opacity="0.95"/>
+
+    <!-- Aurora blobs clipped and warped -->
+    <g clip-path="url(#orbClip)" filter="url(#aurora)">
+      <circle class="b1" cx="88"  cy="88"  r="40" filter="url(#blobBlur)" opacity="0.85"/>
+      <circle class="b2" cx="116" cy="112" r="36" filter="url(#blobBlur)" opacity="0.8"/>
+      <circle class="b3" cx="80"  cy="116" r="32" filter="url(#blobBlur)" opacity="0.75"/>
+      <circle class="b4" cx="118" cy="82"  r="30" filter="url(#blobBlur)" opacity="0.75"/>
+      <circle class="b5" cx="100" cy="100" r="24" filter="url(#blobBlur)" opacity="0.6"/>
+    </g>
+
+    <!-- Gloss top shine -->
+    <circle cx="100" cy="100" r="80" fill="url(#gloss)"/>
+
+    <!-- Soft white centre highlight — pearl effect -->
+    <ellipse cx="88" cy="82" rx="22" ry="18" fill="white" opacity="0.45" filter="url(#blobBlur)"/>
+
+  </g>
+
+</svg>

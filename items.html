@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <script>
+      if ("serviceWorker" in navigator) {
+        window.addEventListener("load", () => {
+          navigator.serviceWorker.register("/sw.js");
+        });
+      }
+    </script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Items - Methang</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+        body { font-family: 'Inter', sans-serif; background: #E5E7EB; color: #1A1A1A; padding: 16px 16px 100px; }
+
+        .header { margin-bottom: 20px; text-align: center; }
+        .header-title { font-size: 20px; font-weight: 700; }
+
+        /* FILTERS */
+        .filter-row { display: flex; gap: 8px; align-items: center; margin-bottom: 16px; justify-content: space-between; }
+        .filter-wrap { position: relative; }
+        .cat-btn { background: #0075FF; border: 1px solid #0075FF; border-radius: 16px; padding: 6px 10px; font-size: 13px; font-weight: 600; color: white; cursor: pointer; display: flex; align-items: center; gap: 4px; font-family: 'Inter', sans-serif; width: 55px; min-width: 55px; overflow: hidden; }
+        .cat-btn span { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .cat-btn svg { width: 12px; height: 12px; flex-shrink: 0; stroke: white; stroke-width: 2; fill: none; }
+        .search-wrap { position: relative; width: 180px; }
+        .search-wrap input { width: 100%; background: white; border: 1px solid #E5E7EB; border-radius: 16px; padding: 6px 12px 6px 32px; font-size: 13px; font-family: 'Inter', sans-serif; color: #1A1A1A; outline: none; }
+        .search-wrap input::placeholder { color: #9CA3AF; }
+        .search-wrap svg { position: absolute; left: 10px; top: 50%; transform: translateY(-50%); width: 16px; height: 16px; stroke: #9CA3AF; stroke-width: 2; fill: none; pointer-events: none; }
+        .stock-btn { background: #E6F0FF; border: 1px solid #0075FF; border-radius: 16px; padding: 6px 10px; cursor: pointer; display: flex; align-items: center; gap: 4px; font-family: 'Inter', sans-serif; width: 48px; min-width: 48px; }
+        .stock-btn svg { flex-shrink: 0; }
+
+        /* DROPDOWNS */
+        .dropdown { display: none; position: absolute; top: calc(100% + 4px); background: white; border: 1px solid #E5E7EB; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); min-width: 160px; z-index: 200; overflow: hidden; }
+        .dropdown.right { right: 0; min-width: 140px; }
+        .dropdown.open { display: block; }
+        .dropdown-item { padding: 10px 16px; font-size: 13px; font-weight: 500; color: #1A1A1A; cursor: pointer; }
+        .dropdown-item:hover { background: #F3F4F6; }
+        .dropdown-item.active { color: #0075FF; background: #E6F0FF; font-weight: 600; }
+
+        /* PRODUCT LIST */
+        .product-list { display: flex; flex-direction: column; gap: 8px; }
+        .product-card { background: white; border-radius: 16px; padding: 6px; box-shadow: 0 2px 8px rgba(0,0,0,0.04); cursor: pointer; display: flex; gap: 12px; align-items: center; }
+        .product-card:active { transform: scale(0.98); }
+        .product-image { width: 80px; height: 80px; object-fit: cover; border-radius: 12px; background: #F3F4F6; flex-shrink: 0; }
+        .product-image-placeholder { width: 80px; height: 80px; border-radius: 12px; background: #F3F4F6; display: flex; align-items: center; justify-content: center; font-size: 32px; flex-shrink: 0; }
+        .product-content { flex: 1; min-width: 0; padding: 6px 6px 6px 0; }
+        .product-name { font-size: 14px; font-weight: 700; color: #1A1A1A; margin-bottom: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .product-category { font-size: 11px; color: #6B7280; margin-bottom: 4px; }
+        .product-stock { font-size: 13px; color: #6B7280; }
+        .product-stock.low { color: #DC2626; font-weight: 600; }
+        .product-price { font-size: 16px; font-weight: 700; color: #1A1A1A; flex-shrink: 0; padding-right: 8px; }
+
+        /* EMPTY / LOADING */
+        .empty-state { text-align: center; padding: 60px 20px; display: none; }
+        .empty-icon { font-size: 64px; margin-bottom: 16px; opacity: 0.5; }
+        .empty-title { font-size: 18px; font-weight: 700; margin-bottom: 8px; }
+        .empty-text { font-size: 14px; color: #6B7280; }
+        .loading-spinner { width: 32px; height: 32px; border: 3px solid #E5E7EB; border-top-color: #0075FF; border-radius: 50%; animation: spin 0.8s linear infinite; margin: 0 auto 12px; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        /* FAB */
+        .fab { position: fixed; bottom: 90px; right: 20px; width: 56px; height: 56px; border-radius: 50%; background: #0075FF; border: none; box-shadow: 0 4px 12px rgba(0,117,255,0.3); cursor: pointer; z-index: 100; display: flex; align-items: center; justify-content: center; }
+        .fab svg { width: 24px; height: 24px; stroke: white; stroke-width: 2; fill: none; }
+        .fab:active { transform: scale(0.95); }
+
+        /* BOTTOM NAV */
+        .bottom-nav { position: fixed; bottom: 0; left: 0; width: 100%; background: white; border-top: 1px solid #E5E7EB; z-index: 100; padding-bottom: max(env(safe-area-inset-bottom), 12px); }
+        .nav-icons-row { display: flex; justify-content: space-around; padding: 8px 0; }
+        .nav-item { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 8px; cursor: pointer; }
+        .nav-icon { width: 22px; height: 22px; stroke: #9CA3AF; stroke-width: 2; fill: none; stroke-linecap: round; stroke-linejoin: round; }
+        .nav-label { font-size: 11px; color: #9CA3AF; font-weight: 500; }
+        .nav-item.active .nav-icon { stroke: #1A1A1A}
+        .nav-item.active .nav-label { color: #1A1A1A}
+    </style>
+</head>
+<body>
+
+    <div class="header">
+        <div class="header-title">Items</div>
+    </div>
+
+    <div class="filter-row">
+        <div class="filter-wrap">
+            <button class="cat-btn" id="categoryFilterBtn" onclick="toggleDropdown('categoryDropdown','stockDropdown')">
+                <span id="categoryText">All</span>
+                <svg viewBox="0 0 12 8"><path d="M1 1L6 6L11 1" stroke-linecap="round"/></svg>
+            </button>
+            <div class="dropdown" id="categoryDropdown">
+                <div class="dropdown-item active" onclick="selectCategory('All', this)">All</div>
+                <div id="categoryOptions"></div>
+            </div>
+        </div>
+
+        <div class="search-wrap">
+            <input type="text" placeholder="Search..." id="searchInput" oninput="searchProducts(this.value)">
+            <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+        </div>
+
+        <div class="filter-wrap">
+            <button class="stock-btn" id="stockFilterBtn" onclick="toggleDropdown('stockDropdown','categoryDropdown')">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#0075FF" stroke-width="2"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg>
+                <svg width="12" height="12" viewBox="0 0 12 8" fill="none" stroke="#0075FF" stroke-width="2"><path d="M1 1L6 6L11 1" stroke-linecap="round"/></svg>
+            </button>
+            <div class="dropdown right" id="stockDropdown">
+                <div class="dropdown-item active" onclick="selectStockFilter('All', this)">All</div>
+                <div class="dropdown-item" onclick="selectStockFilter('In Stock', this)">In Stock</div>
+                <div class="dropdown-item" onclick="selectStockFilter('Low Stock', this)">Low Stock</div>
+            </div>
+        </div>
+    </div>
+
+    <div id="loadingState" style="text-align: center; padding: 48px 16px;">
+        <div class="loading-spinner"></div>
+        <div style="font-size: 13px; color: #6B7280;">Loading items...</div>
+    </div>
+
+    <div class="product-list" id="productList"></div>
+
+    <div class="empty-state" id="emptyState">
+        <div class="empty-icon">📦</div>
+        <div class="empty-title">No Items Yet</div>
+        <div class="empty-text">Tap + to add your first item</div>
+    </div>
+
+    <button class="fab" onclick="window.location.href='add-item.html'">
+        <svg viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+    </button>
+
+    <nav class="bottom-nav">
+        <div class="nav-icons-row">
+            <div class="nav-item" onclick="window.location.href='home.html'">
+                <svg class="nav-icon" viewBox="0 0 24 24"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>
+                <div class="nav-label">Home</div>
+            </div>
+            <div class="nav-item" onclick="window.location.href='sales.html'">
+                <svg class="nav-icon" viewBox="0 0 24 24"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/></svg>
+                <div class="nav-label">Sales</div>
+            </div>
+            <div class="nav-item active">
+                <svg class="nav-icon" viewBox="0 0 24 24"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>
+                <div class="nav-label">Items</div>
+            </div>
+            <div class="nav-item" onclick="window.location.href='expenses.html'">
+                <svg class="nav-icon" viewBox="0 0 24 24"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>
+                <div class="nav-label">Expenses</div>
+            </div>
+            <div class="nav-item" onclick="window.location.href='reports.html'">
+                <svg class="nav-icon" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+                <div class="nav-label">Reports</div>
+            </div>
+        </div>
+    </nav>
+
+<script>
+    const SUPABASE_URL      = 'https://ufcpvbabgtftyfumzpnp.supabase.co';
+    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVmY3B2YmFiZ3RmdHlmdW16cG5wIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ4ODEwMzcsImV4cCI6MjA5MDQ1NzAzN30.TzFJxnc8_ykXegNo2oMlN0xHXPkwHQcYNMAFMJorq5U';
+    const db = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+    let allProducts          = [];
+    let currentCategoryFilter = 'All';
+    let currentStockFilter    = 'All';
+    let searchQuery           = '';
+
+    // ── Auth + Load ───────────────────────────────────────────────────────
+    async function init() {
+        const { data: { session } } = await db.auth.getSession();
+        if (!session) { window.location.href = 'login.html'; return; }
+        await loadProducts(session.user.id);
+    }
+
+    async function loadProducts(userId) {
+        const { data, error } = await db
+            .from('items')
+            .select('*')
+            .eq('user_id', userId)
+            .order('created_at', { ascending: false });
+
+        document.getElementById('loadingState').style.display = 'none';
+
+        if (error) {
+            console.error('Error loading products:', error);
+            document.getElementById('emptyState').style.display = 'block';
+            return;
+        }
+
+        allProducts = data || [];
+        populateCategoryFilter();
+        applyFilters();
+    }
+
+    // ── Filters ───────────────────────────────────────────────────────────
+    function applyFilters() {
+        let filtered = allProducts;
+        if (currentCategoryFilter !== 'All')
+            filtered = filtered.filter(p => p.category === currentCategoryFilter);
+        if (currentStockFilter === 'Low Stock')
+            filtered = filtered.filter(p => p.stock <= (p.low_stock_alert || 10));
+        else if (currentStockFilter === 'In Stock')
+            filtered = filtered.filter(p => p.stock > (p.low_stock_alert || 10));
+        if (searchQuery)
+            filtered = filtered.filter(p =>
+                p.name.toLowerCase().includes(searchQuery) ||
+                (p.category||'').toLowerCase().includes(searchQuery));
+        displayProducts(filtered);
+    }
+
+    function searchProducts(q) { searchQuery = q.toLowerCase().trim(); applyFilters(); }
+
+    function selectCategory(cat, el) {
+        currentCategoryFilter = cat;
+        document.getElementById('categoryText').textContent = cat === 'All' ? 'All' : cat.split(' ')[0];
+        document.querySelectorAll('#categoryDropdown .dropdown-item').forEach(i => i.classList.remove('active'));
+        el.classList.add('active');
+        toggleDropdown('categoryDropdown', 'stockDropdown'); // close
+        applyFilters();
+    }
+
+    function selectStockFilter(f, el) {
+        currentStockFilter = f;
+        document.querySelectorAll('#stockDropdown .dropdown-item').forEach(i => i.classList.remove('active'));
+        el.classList.add('active');
+        toggleDropdown('stockDropdown', 'categoryDropdown'); // close
+        applyFilters();
+    }
+
+    function toggleDropdown(openId, closeId) {
+        document.getElementById(closeId).classList.remove('open');
+        document.getElementById(openId).classList.toggle('open');
+    }
+    document.addEventListener('click', e => {
+        if (!e.target.closest('.filter-wrap')) {
+            document.getElementById('categoryDropdown').classList.remove('open');
+            document.getElementById('stockDropdown').classList.remove('open');
+        }
+    });
+
+    function populateCategoryFilter() {
+        const cats = [...new Set(allProducts.map(p => p.category).filter(Boolean))];
+        document.getElementById('categoryOptions').innerHTML = cats.map(cat =>
+            `<div class="dropdown-item" onclick="selectCategory('${cat}', this)">${cat}</div>`
+        ).join('');
+    }
+
+    // ── Render ────────────────────────────────────────────────────────────
+    function displayProducts(products) {
+        const list  = document.getElementById('productList');
+        const empty = document.getElementById('emptyState');
+        if (!products.length) { list.innerHTML = ''; empty.style.display = 'block'; return; }
+        empty.style.display = 'none';
+        const isLow = p => p.stock <= (p.low_stock_alert || 10);
+        list.innerHTML = products.map(p => `
+            <div class="product-card" onclick="window.location.href='edit-item.html?id=${p.id}'">
+                ${p.image
+                    ? `<img src="${p.image}" class="product-image" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">`
+                    : ''}
+                <div class="product-image-placeholder" ${p.image ? 'style="display:none"' : ''}>📦</div>
+                <div class="product-content">
+                    <div class="product-name">${p.name}</div>
+                    ${p.category ? `<div class="product-category">📁 ${p.category}</div>` : ''}
+                    <div class="product-stock ${isLow(p) ? 'low' : ''}">${isLow(p) ? '⚠️ ' : ''}${p.stock} in stock</div>
+                </div>
+                <div class="product-price">₦${Number(p.price).toLocaleString('en-NG')}</div>
+            </div>
+        `).join('');
+    }
+
+    init();
+</script>
+</body>
+</html>

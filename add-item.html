@@ -1,0 +1,577 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <script>
+      if ("serviceWorker" in navigator) {
+        window.addEventListener("load", () => {
+          navigator.serviceWorker.register("/sw.js");
+        });
+      }
+    </script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Add Item - Methang</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Inter', sans-serif; background: #F3F4F6; color: #1A1A1A; }
+        
+        .header { position: sticky; top: 0; z-index: 100; background: #F3F4F6; display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; padding: 16px; }
+        .header-title { font-size: 18px; font-weight: 700; }
+        
+        .back-btn { width: 35px; height: 35px; border-radius: 50%; background: white; border: none; box-shadow: 0 2px 4px rgba(0,0,0,0.08); display: flex; align-items: center; justify-content: center; cursor: pointer; }
+        .back-btn svg { width: 20px; height: 20px; stroke: #1A1A1A; stroke-width: 2; fill: none; }
+        .back-btn:active { transform: scale(0.95); }
+        
+        .save-btn { background: none; border: none; color: #0075FF; font-size: 16px; font-weight: 600; cursor: pointer; padding: 8px 12px; }
+        .save-btn:active { opacity: 0.7; }
+        
+        .form-container { padding: 0 16px 40px; }
+        
+        .image-upload-section { background: white; border-radius: 16px; padding: 20px; margin-bottom: 16px; text-align: center; }
+        .image-preview { width: 100%; max-width: 300px; height: 250px; border-radius: 12px; border: 2px dashed #E5E7EB; margin: 0 auto 12px; display: flex; align-items: center; justify-content: center; flex-direction: column; gap: 12px; background: #F9FAFB; cursor: pointer; position: relative; }
+        .image-preview.has-image { border: none; background: none; }
+        .image-preview img { width: 100%; height: 100%; object-fit: cover; border-radius: 12px; }
+        .image-preview svg { width: 48px; height: 48px; stroke: #9CA3AF; stroke-width: 2; fill: none; }
+        .image-preview-text { font-size: 13px; font-weight: 500; color: #6B7280; }
+        .image-upload-section input[type="file"] { display: none; }
+        .remove-image-btn { position: absolute; top: 8px; right: 8px; width: 32px; height: 32px; border-radius: 50%; background: rgba(0,0,0,0.7); border: none; color: white; font-size: 18px; cursor: pointer; display: none; }
+        .image-preview.has-image .remove-image-btn { display: flex; align-items: center; justify-content: center; }
+        .change-photo-btn { background: #F3F4F6; border: none; padding: 10px 20px; border-radius: 8px; font-size: 13px; font-weight: 600; color: #1A1A1A; cursor: pointer; font-family: 'Inter', sans-serif; }
+        .change-photo-btn:active { background: #E5E7EB; }
+        
+        .form-section { background: white; border-radius: 16px; padding: 20px; margin-bottom: 16px; }
+        .section-title { font-size: 14px; font-weight: 700; margin-bottom: 16px; color: #1A1A1A; }
+        
+        .form-group { margin-bottom: 16px; }
+        .form-group:last-child { margin-bottom: 0; }
+        .form-label { font-size: 13px; font-weight: 600; margin-bottom: 8px; display: block; color: #374151; }
+        .form-label .required { color: #DC2626; }
+        .form-input { width: 100%; padding: 12px 16px; border: 2px solid #E5E7EB; border-radius: 12px; font-size: 14px; font-family: 'Inter', sans-serif; background: white; }
+        .form-input:focus { outline: none; border-color: #0075FF; }
+        .form-input::placeholder { color: #9CA3AF; }
+        
+        textarea.form-input { resize: vertical; min-height: 80px; }
+        
+        .form-hint { font-size: 11px; color: #6B7280; margin-top: 6px; }
+        
+        .calculated-field { background: #F9FAFB; border: 2px solid #E5E7EB; padding: 12px 16px; border-radius: 12px; display: flex; justify-content: space-between; align-items: center; }
+        .calculated-label { font-size: 14px; color: #6B7280; }
+        .calculated-value { font-size: 16px; font-weight: 700; color: #1A1A1A; }
+        .calculated-value.positive { color: #059669; }
+        
+        .save-button { position: fixed; bottom: 0; left: 0; right: 0; padding: 16px; background: white; box-shadow: 0 -2px 8px rgba(0,0,0,0.08); }
+        .btn-save { width: 100%; padding: 16px; background: #0075FF; color: white; border: none; border-radius: 12px; font-size: 16px; font-weight: 600; cursor: pointer; font-family: 'Inter', sans-serif; }
+        .btn-save:active { background: #0056CC; }
+        .btn-save:disabled { background: #9CA3AF; cursor: not-allowed; }
+        
+        /* Responsive styles */
+        @media (min-width: 640px) {
+            .form-container { max-width: 600px; margin: 0 auto; padding: 0 24px 40px; }
+            .header { padding: 16px 24px; }
+        }
+        
+        @media (min-width: 1024px) {
+            .form-container { max-width: 700px; }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <button class="save-btn" onclick="window.location.href='items.html'" id="cancelBtn">Cancel</button>
+        <div class="header-title">Add Item</div>
+        <button class="save-btn" onclick="saveProduct()" type="button" id="saveBtn">Save</button>
+    </div>
+
+    <div id="productForm" class="form-container">
+        <!-- Image Upload -->
+        <div class="image-upload-section">
+            <input type="file" id="productImage" accept="image/*" onchange="previewImage(event)">
+            <div id="imagePreview" class="image-preview" onclick="document.getElementById('productImage').click()">
+                <svg viewBox="0 0 24 24">
+                    <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                    <circle cx="8.5" cy="8.5" r="1.5"></circle>
+                    <polyline points="21 15 16 10 5 21"></polyline>
+                </svg>
+                <span class="image-preview-text">Add Item Photo</span>
+                <button type="button" class="remove-image-btn" onclick="removeImage(event)">×</button>
+            </div>
+            <button type="button" class="change-photo-btn" onclick="document.getElementById('productImage').click()">
+                Choose Photo
+            </button>
+        </div>
+
+        <!-- Basic Information -->
+        <div class="form-section">
+            <div class="section-title">Basic Information</div>
+            
+            <div class="form-group">
+                <label class="form-label">Item Name <span class="required">*</span></label>
+                <input type="text" class="form-input" id="productName" required placeholder="e.g. Rice (50kg bag)">
+            </div>
+            
+            <div class="form-group">
+                <label class="form-label">Item Category</label>
+                <div class="form-input" style="cursor: pointer; display: flex; align-items: center; justify-content: space-between; background: #F9FAFB;" onclick="saveFormDataAndNavigate('item-categories.html')">
+                    <span id="categoryDisplay" style="color: #6B7280;">Choose a category or add new</span>
+                    <svg style="width: 20px; height: 20px; stroke: #6B7280; stroke-width: 2; fill: none;" viewBox="0 0 24 24">
+                        <polyline points="9 18 15 12 9 6"></polyline>
+                    </svg>
+                </div>
+                <input type="hidden" id="productCategory" value="">
+            </div>
+            
+            <div class="form-group">
+                <label class="form-label">Description</label>
+                <textarea class="form-input" id="productDescription" placeholder="Add item details, specifications, or notes..."></textarea>
+                <div class="form-hint">Optional - Add any important details about this item</div>
+            </div>
+            
+            <div class="form-group">
+                <label class="form-label">Vendor/Supplier</label>
+                <div class="form-input" style="cursor: pointer; display: flex; align-items: center; justify-content: space-between; background: #F9FAFB;" onclick="saveFormDataAndNavigate('vendors.html')">
+                    <span id="vendorDisplay" style="color: #6B7280;">Choose a vendor or add new</span>
+                    <svg style="width: 20px; height: 20px; stroke: #6B7280; stroke-width: 2; fill: none;" viewBox="0 0 24 24">
+                        <polyline points="9 18 15 12 9 6"></polyline>
+                    </svg>
+                </div>
+                <input type="hidden" id="productVendor" value="">
+            </div>
+        </div>
+
+        <!-- Pricing -->
+        <div class="form-section">
+            <div class="section-title">Pricing</div>
+            
+            <div class="form-group">
+                <label class="form-label">Cost Price (₦) <span class="required">*</span></label>
+                <input type="number" class="form-input" id="productCost" min="0" step="0.01" required placeholder="0.00" oninput="calculateProfit()">
+                <div class="form-hint">How much did you buy it for?</div>
+            </div>
+            
+            <div class="form-group">
+                <label class="form-label">Selling Price (₦) <span class="required">*</span></label>
+                <input type="number" class="form-input" id="productPrice" min="0" step="0.01" required placeholder="0.00" oninput="calculateProfit()">
+                <div class="form-hint">How much will you sell it for?</div>
+            </div>
+            
+            <div class="form-group">
+                <div class="calculated-field">
+                    <span class="calculated-label">Profit per Unit</span>
+                    <span class="calculated-value positive" id="profitDisplay">₦0.00</span>
+                </div>
+            </div>
+            
+            <div class="form-group">
+                <div class="calculated-field">
+                    <span class="calculated-label">Profit Margin</span>
+                    <span class="calculated-value" id="marginDisplay">0%</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Inventory -->
+        <div class="form-section">
+            <div class="section-title">Inventory</div>
+            
+            <div class="form-group">
+                <label class="form-label">Stock Quantity <span class="required">*</span></label>
+                <input type="number" class="form-input" id="productStock" min="0" value="0" required placeholder="0">
+                <div class="form-hint">How many units do you have in stock?</div>
+            </div>
+            
+            <div class="form-group">
+                <label class="form-label">Low Stock Alert</label>
+                <input type="number" class="form-input" id="productAlert" min="0" value="10" placeholder="10">
+                <div class="form-hint">Get notified when stock falls below this number</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Supabase Configuration
+        const SUPABASE_URL = 'https://ufcpvbabgtftyfumzpnp.supabase.co';
+        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVmY3B2YmFiZ3RmdHlmdW16cG5wIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ4ODEwMzcsImV4cCI6MjA5MDQ1NzAzN30.TzFJxnc8_ykXegNo2oMlN0xHXPkwHQcYNMAFMJorq5U';
+        
+        let supabaseClient;
+        if (window.supabase && window.supabase.createClient) {
+            supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        }
+
+        let currentImageFile = null;
+        let currentImagePreview = null;
+        let currentUser = null;
+
+        // Check authentication on page load
+        async function checkAuth() {
+            const { data: { session } } = await supabaseClient.auth.getSession();
+            if (!session) {
+                // No session - redirect to login
+                window.location.href = 'login.html';
+                return false;
+            }
+            currentUser = session.user;
+            return true;
+        }
+
+        // Save form data before navigating away
+        function saveFormDataAndNavigate(url) {
+            const formData = {
+                name: document.getElementById('productName').value,
+                description: document.getElementById('productDescription').value,
+                cost: document.getElementById('productCost').value,
+                price: document.getElementById('productPrice').value,
+                stock: document.getElementById('productStock').value,
+                alert: document.getElementById('productAlert').value,
+                category: document.getElementById('productCategory').value,
+                categoryDisplay: document.getElementById('categoryDisplay').textContent,
+                vendor: document.getElementById('productVendor').value,
+                vendorDisplay: document.getElementById('vendorDisplay').textContent,
+                imagePreview: currentImagePreview,
+                imageFileName: currentImageFile ? currentImageFile.name : null,
+                imageFileType: currentImageFile ? currentImageFile.type : null
+            };
+            
+            sessionStorage.setItem('add_product_form_data', JSON.stringify(formData));
+            window.location.href = url;
+        }
+
+        // Restore form data after coming back
+        function restoreFormData() {
+            const savedData = sessionStorage.getItem('add_product_form_data');
+            if (savedData) {
+                const formData = JSON.parse(savedData);
+                
+                // Restore text fields
+                if (formData.name) document.getElementById('productName').value = formData.name;
+                if (formData.description) document.getElementById('productDescription').value = formData.description;
+                if (formData.cost) document.getElementById('productCost').value = formData.cost;
+                if (formData.price) document.getElementById('productPrice').value = formData.price;
+                if (formData.stock) document.getElementById('productStock').value = formData.stock;
+                if (formData.alert) document.getElementById('productAlert').value = formData.alert;
+                
+                // Restore category
+                if (formData.category) {
+                    document.getElementById('productCategory').value = formData.category;
+                }
+                if (formData.categoryDisplay) {
+                    document.getElementById('categoryDisplay').textContent = formData.categoryDisplay;
+                    if (formData.category) {
+                        document.getElementById('categoryDisplay').style.color = '#1A1A1A';
+                    }
+                }
+                
+                // Restore vendor
+                if (formData.vendor) {
+                    document.getElementById('productVendor').value = formData.vendor;
+                }
+                if (formData.vendorDisplay) {
+                    document.getElementById('vendorDisplay').textContent = formData.vendorDisplay;
+                    if (formData.vendor) {
+                        document.getElementById('vendorDisplay').style.color = '#1A1A1A';
+                    }
+                }
+                
+                // Restore image preview and recreate File object from Base64
+                if (formData.imagePreview) {
+                    currentImagePreview = formData.imagePreview;
+                    const preview = document.getElementById('imagePreview');
+                    preview.innerHTML = `
+                        <img src="${currentImagePreview}" alt="Product">
+                        <button type="button" class="remove-image-btn" onclick="removeImage(event)">×</button>
+                    `;
+                    preview.classList.add('has-image');
+                    
+                    // Convert Base64 back to File object so it can be uploaded
+                    if (formData.imageFileName && formData.imageFileType) {
+                        fetch(currentImagePreview)
+                            .then(res => res.blob())
+                            .then(blob => {
+                                currentImageFile = new File([blob], formData.imageFileName, { 
+                                    type: formData.imageFileType 
+                                });
+                                console.log('✅ Image file restored:', currentImageFile.name, currentImageFile.size, 'bytes');
+                            })
+                            .catch(err => {
+                                console.error('❌ Error restoring image file:', err);
+                            });
+                    }
+                }
+                
+                // Recalculate profit if cost and price exist
+                if (formData.cost && formData.price) {
+                    calculateProfit();
+                }
+            }
+        }
+
+        // Initialize on page load
+        document.addEventListener('DOMContentLoaded', async function() {
+            // Check authentication first
+            const isAuthenticated = await checkAuth();
+            if (!isAuthenticated) return;
+            
+            // Restore form data first
+            restoreFormData();
+            
+            // Check if category was selected
+            const selectedCategory = sessionStorage.getItem('selected_category');
+            if (selectedCategory) {
+                document.getElementById('productCategory').value = selectedCategory;
+                document.getElementById('categoryDisplay').textContent = selectedCategory;
+                document.getElementById('categoryDisplay').style.color = '#1A1A1A';
+                sessionStorage.removeItem('selected_category');
+                
+                // Update saved form data with new category
+                const savedData = sessionStorage.getItem('add_product_form_data');
+                if (savedData) {
+                    const formData = JSON.parse(savedData);
+                    formData.category = selectedCategory;
+                    formData.categoryDisplay = selectedCategory;
+                    sessionStorage.setItem('add_product_form_data', JSON.stringify(formData));
+                }
+            }
+            
+            // Check if vendor was selected
+            const selectedVendor = sessionStorage.getItem('selected_vendor');
+            if (selectedVendor) {
+                document.getElementById('productVendor').value = selectedVendor;
+                document.getElementById('vendorDisplay').textContent = selectedVendor;
+                document.getElementById('vendorDisplay').style.color = '#1A1A1A';
+                sessionStorage.removeItem('selected_vendor');
+                
+                // Update saved form data with new vendor
+                const savedData = sessionStorage.getItem('add_product_form_data');
+                if (savedData) {
+                    const formData = JSON.parse(savedData);
+                    formData.vendor = selectedVendor;
+                    formData.vendorDisplay = selectedVendor;
+                    sessionStorage.setItem('add_product_form_data', JSON.stringify(formData));
+                }
+            }
+            
+            // Don't clear saved form data - let it persist until user saves or leaves page
+        });
+
+        // Preview image
+        function previewImage(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            // Check file size (max 10MB)
+            if (file.size > 10 * 1024 * 1024) {
+                alert('⚠️ Image size must be less than 10MB');
+                event.target.value = '';
+                return;
+            }
+
+            // Store file for later upload
+            currentImageFile = file;
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                currentImagePreview = e.target.result;
+                const preview = document.getElementById('imagePreview');
+                preview.innerHTML = `
+                    <img src="${currentImagePreview}" alt="Product">
+                    <button type="button" class="remove-image-btn" onclick="removeImage(event)">×</button>
+                `;
+                preview.classList.add('has-image');
+            };
+            reader.readAsDataURL(file);
+        }
+
+        // Remove image
+        function removeImage(event) {
+            event.stopPropagation();
+            currentImageFile = null;
+            currentImagePreview = null;
+            document.getElementById('productImage').value = '';
+            const preview = document.getElementById('imagePreview');
+            preview.innerHTML = `
+                <svg viewBox="0 0 24 24">
+                    <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                    <circle cx="8.5" cy="8.5" r="1.5"></circle>
+                    <polyline points="21 15 16 10 5 21"></polyline>
+                </svg>
+                <span class="image-preview-text">Add Item Photo</span>
+            `;
+            preview.classList.remove('has-image');
+        }
+
+        // Upload image to Supabase Storage
+        // Upload image to Supabase Storage
+        async function uploadImage(file) {
+            if (!file) return null;
+
+            try {
+                const fileExt = file.name.split('.').pop();
+                const fileName = `${Date.now()}_${Math.random().toString(36).substring(7)}.${fileExt}`;
+                const filePath = `${fileName}`;
+
+                console.log('Uploading image:', fileName);
+
+                const { data, error } = await supabaseClient.storage
+                    .from('product-images')
+                    .upload(filePath, file, {
+                        cacheControl: '3600',
+                        upsert: false
+                    });
+
+                if (error) {
+                    console.error('Storage upload error:', error);
+                    throw new Error(`Image upload failed: ${error.message}`);
+                }
+
+                console.log('Upload successful:', data);
+
+                // Get public URL
+                const { data: urlData } = supabaseClient.storage
+                    .from('product-images')
+                    .getPublicUrl(filePath);
+
+                console.log('Public URL:', urlData.publicUrl);
+
+                return urlData.publicUrl;
+            } catch (error) {
+                console.error('Error uploading image:', error);
+                alert('⚠️ Image upload failed: ' + error.message + '\n\nItem will be saved without image.');
+                return null; // Continue saving product without image
+            }
+        }
+
+        // Calculate profit and margin
+        function calculateProfit() {
+            const cost = parseFloat(document.getElementById('productCost').value) || 0;
+            const price = parseFloat(document.getElementById('productPrice').value) || 0;
+            
+            const profit = price - cost;
+            const margin = cost > 0 ? ((profit / cost) * 100) : 0;
+            
+            document.getElementById('profitDisplay').textContent = `₦${profit.toFixed(2)}`;
+            document.getElementById('marginDisplay').textContent = `${margin.toFixed(1)}%`;
+            
+            // Color coding
+            if (profit > 0) {
+                document.getElementById('profitDisplay').style.color = '#059669';
+            } else if (profit < 0) {
+                document.getElementById('profitDisplay').style.color = '#DC2626';
+            } else {
+                document.getElementById('profitDisplay').style.color = '#6B7280';
+            }
+        }
+
+        // Save product
+        async function saveProduct() {
+            // Validate required fields
+            const productName = document.getElementById('productName').value.trim();
+            const productCost = document.getElementById('productCost').value;
+            const productPrice = document.getElementById('productPrice').value;
+            const productStock = document.getElementById('productStock').value;
+
+            if (!productName) {
+                alert('⚠️ Please enter item name');
+                return;
+            }
+
+            if (!productCost || !productPrice || !productStock) {
+                alert('⚠️ Please fill in all required fields');
+                return;
+            }
+
+            // Disable buttons and show loading
+            const saveBtn = document.getElementById('saveBtn');
+            const cancelBtn = document.getElementById('cancelBtn');
+            saveBtn.textContent = 'Saving...';
+            saveBtn.disabled = true;
+            cancelBtn.disabled = true;
+
+            if (!supabaseClient) {
+                alert('⚠️ Database not initialized. Please refresh the page.');
+                saveBtn.textContent = 'Save';
+                saveBtn.disabled = false;
+                cancelBtn.disabled = false;
+                return;
+            }
+
+            try {
+                // Get current logged-in user
+                const { data: { user }, error: authError } = await supabaseClient.auth.getUser();
+                
+                if (authError || !user) {
+                    alert('⚠️ You must be logged in to add items. Redirecting to login...');
+                    window.location.href = 'login.html';
+                    return;
+                }
+
+                console.log('📸 Checking for image file...');
+                console.log('currentImageFile:', currentImageFile);
+
+                // Upload image first if there is one
+                let imageUrl = null;
+                if (currentImageFile) {
+                    console.log('📤 Image file found, starting upload...');
+                    saveBtn.textContent = 'Uploading image...';
+                    try {
+                        imageUrl = await uploadImage(currentImageFile);
+                        console.log('✅ Image uploaded successfully:', imageUrl);
+                    } catch (uploadError) {
+                        console.error('❌ Image upload error:', uploadError);
+                        alert('⚠️ Image upload failed: ' + uploadError.message);
+                    }
+                } else {
+                    console.log('ℹ️ No image file selected');
+                }
+
+                saveBtn.textContent = 'Saving item...';
+
+                const categoryValue = document.getElementById('productCategory').value;
+                const vendorValue = document.getElementById('productVendor').value;
+
+                // Create new product object
+                const newProduct = {
+                    user_id: user.id, // Real user ID from auth session
+                    name: productName,
+                    description: document.getElementById('productDescription').value.trim(),
+                    cost: parseFloat(productCost),
+                    price: parseFloat(productPrice),
+                    stock: parseInt(productStock),
+                    low_stock_alert: parseInt(document.getElementById('productAlert').value) || 10,
+                    created_at: new Date().toISOString()
+                };
+
+                // Add optional fields only if they exist
+                if (imageUrl) newProduct.image = imageUrl;
+                if (categoryValue) newProduct.category = categoryValue;
+                if (vendorValue) newProduct.vendor = vendorValue;
+
+                console.log('💾 Saving product to Supabase:', newProduct);
+
+                // Save to Supabase
+                const { data, error } = await supabaseClient
+                    .from('items')
+                    .insert([newProduct])
+                    .select();
+
+                if (error) throw error;
+
+                // Clear saved form data after successful save
+                sessionStorage.removeItem('add_product_form_data');
+
+                alert('✅ Item added successfully!');
+                window.location.href = 'items.html';
+
+            } catch (error) {
+                console.error('Error saving product:', error);
+                alert('⚠️ Failed to save item: ' + error.message);
+                
+                // Re-enable buttons
+                saveBtn.textContent = 'Save';
+                saveBtn.disabled = false;
+                cancelBtn.disabled = false;
+            }
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI Orb Blue</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: #F0F2F5;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+  }
+
+  .orb-wrapper {
+    position: relative;
+    width: 220px;
+    height: 220px;
+  }
+
+  /* Outer ambient glow */
+  .orb-wrapper::before {
+    content: '';
+    position: absolute;
+    inset: -24px;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(0, 117, 255, 0.22) 0%, transparent 70%);
+    animation: ambientPulse 5s ease-in-out infinite;
+  }
+
+  /* The orb container */
+  .orb {
+    position: relative;
+    width: 220px;
+    height: 220px;
+    border-radius: 50%;
+    overflow: hidden;
+    background: #001A66;
+    box-shadow:
+      0 0 60px rgba(0, 117, 255, 0.3),
+      0 0 30px rgba(0, 160, 255, 0.2),
+      inset 0 0 40px rgba(0, 60, 180, 0.4);
+  }
+
+  /* Blobs layer */
+  .blobs {
+    position: absolute;
+    inset: 0;
+    filter: blur(28px) saturate(1.6);
+  }
+
+  .blob {
+    position: absolute;
+    border-radius: 50%;
+    mix-blend-mode: screen;
+  }
+
+  .blob-1 {
+    width: 160px; height: 160px;
+    top: -20px; left: -20px;
+    background: radial-gradient(circle, #0075FF, #0044CC);
+    animation: move1 18s ease-in-out infinite, color1 14s ease-in-out infinite;
+  }
+  .blob-2 {
+    width: 140px; height: 140px;
+    top: 60px; left: 80px;
+    background: radial-gradient(circle, #00AAFF, #0055EE);
+    animation: move2 22s ease-in-out infinite, color2 18s ease-in-out infinite;
+  }
+  .blob-3 {
+    width: 130px; height: 130px;
+    top: 90px; left: -10px;
+    background: radial-gradient(circle, #3300FF, #1A00CC);
+    animation: move3 16s ease-in-out infinite, color3 12s ease-in-out infinite;
+  }
+  .blob-4 {
+    width: 120px; height: 120px;
+    top: -10px; left: 90px;
+    background: radial-gradient(circle, #00CCFF, #0088EE);
+    animation: move4 24s ease-in-out infinite, color4 20s ease-in-out infinite;
+  }
+  .blob-5 {
+    width: 100px; height: 100px;
+    top: 70px; left: 50px;
+    background: radial-gradient(circle, #0044FF, #0022AA);
+    animation: move5 20s ease-in-out infinite, color5 16s ease-in-out infinite;
+  }
+  .blob-6 {
+    width: 90px; height: 90px;
+    top: 110px; left: 100px;
+    background: radial-gradient(circle, #6600FF, #3300CC);
+    animation: move6 26s ease-in-out infinite;
+  }
+
+  /* Glass gloss overlay */
+  .gloss {
+    position: absolute;
+    inset: 0;
+    border-radius: 50%;
+    background:
+      radial-gradient(ellipse 55% 40% at 38% 28%, rgba(255,255,255,0.55) 0%, transparent 100%),
+      radial-gradient(ellipse 28% 18% at 35% 25%, rgba(255,255,255,0.4) 0%, transparent 100%);
+    pointer-events: none;
+  }
+
+  /* Rim edge */
+  .rim {
+    position: absolute;
+    inset: 0;
+    border-radius: 50%;
+    background: radial-gradient(circle at 50% 50%, transparent 60%, rgba(0, 150, 255, 0.35) 100%);
+    pointer-events: none;
+  }
+
+  /* ---- Animations ---- */
+  @keyframes ambientPulse {
+    0%, 100% { opacity: 0.8; transform: scale(1); }
+    50%       { opacity: 1;   transform: scale(1.06); }
+  }
+
+  @keyframes move1 {
+    0%   { transform: translate(0px, 0px) scale(1); }
+    25%  { transform: translate(30px, 20px) scale(1.08); }
+    50%  { transform: translate(10px, 40px) scale(0.95); }
+    75%  { transform: translate(-20px, 10px) scale(1.05); }
+    100% { transform: translate(0px, 0px) scale(1); }
+  }
+  @keyframes move2 {
+    0%   { transform: translate(0px, 0px) scale(1); }
+    30%  { transform: translate(-30px, -20px) scale(1.1); }
+    65%  { transform: translate(20px, -30px) scale(0.92); }
+    100% { transform: translate(0px, 0px) scale(1); }
+  }
+  @keyframes move3 {
+    0%   { transform: translate(0px, 0px) scale(1); }
+    20%  { transform: translate(25px, -25px) scale(1.12); }
+    55%  { transform: translate(-15px, 20px) scale(0.9); }
+    80%  { transform: translate(10px, -10px) scale(1.06); }
+    100% { transform: translate(0px, 0px) scale(1); }
+  }
+  @keyframes move4 {
+    0%   { transform: translate(0px, 0px) scale(1); }
+    35%  { transform: translate(-25px, 30px) scale(1.08); }
+    70%  { transform: translate(15px, 15px) scale(0.94); }
+    100% { transform: translate(0px, 0px) scale(1); }
+  }
+  @keyframes move5 {
+    0%   { transform: translate(0px, 0px) scale(1); }
+    40%  { transform: translate(20px, -20px) scale(1.15); }
+    80%  { transform: translate(-20px, 15px) scale(0.88); }
+    100% { transform: translate(0px, 0px) scale(1); }
+  }
+  @keyframes move6 {
+    0%   { transform: translate(0px, 0px); }
+    33%  { transform: translate(-20px, -25px); }
+    66%  { transform: translate(25px, -10px); }
+    100% { transform: translate(0px, 0px); }
+  }
+
+  /* Color morphing — blue, cyan, indigo, electric */
+  @keyframes color1 {
+    0%   { background: radial-gradient(circle, #0075FF, #0044CC); }
+    33%  { background: radial-gradient(circle, #00AAFF, #0066DD); }
+    66%  { background: radial-gradient(circle, #0055FF, #0033BB); }
+    100% { background: radial-gradient(circle, #0075FF, #0044CC); }
+  }
+  @keyframes color2 {
+    0%   { background: radial-gradient(circle, #00AAFF, #0055EE); }
+    33%  { background: radial-gradient(circle, #4400FF, #2200CC); }
+    66%  { background: radial-gradient(circle, #00DDFF, #0099EE); }
+    100% { background: radial-gradient(circle, #00AAFF, #0055EE); }
+  }
+  @keyframes color3 {
+    0%   { background: radial-gradient(circle, #3300FF, #1A00CC); }
+    33%  { background: radial-gradient(circle, #0075FF, #0044CC); }
+    66%  { background: radial-gradient(circle, #6600FF, #4400CC); }
+    100% { background: radial-gradient(circle, #3300FF, #1A00CC); }
+  }
+  @keyframes color4 {
+    0%   { background: radial-gradient(circle, #00CCFF, #0088EE); }
+    50%  { background: radial-gradient(circle, #0055FF, #0033CC); }
+    100% { background: radial-gradient(circle, #00CCFF, #0088EE); }
+  }
+  @keyframes color5 {
+    0%   { background: radial-gradient(circle, #0044FF, #0022AA); }
+    50%  { background: radial-gradient(circle, #00BBFF, #0077DD); }
+    100% { background: radial-gradient(circle, #0044FF, #0022AA); }
+  }
+</style>
+</head>
+<body>
+
+<div class="orb-wrapper">
+  <div class="orb">
+    <div class="blobs">
+      <div class="blob blob-1"></div>
+      <div class="blob blob-2"></div>
+      <div class="blob blob-3"></div>
+      <div class="blob blob-4"></div>
+      <div class="blob blob-5"></div>
+      <div class="blob blob-6"></div>
+    </div>
+    <div class="rim"></div>
+    <div class="gloss"></div>
+  </div>
+</div>
+
+</body>
+</html>

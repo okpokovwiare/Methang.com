@@ -1,0 +1,1112 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <script>
+      if ("serviceWorker" in navigator) {
+        window.addEventListener("load", () => {
+          navigator.serviceWorker.register("/sw.js");
+        });
+      }
+    </script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Record Sale - Methang</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+        html { width: 100%; overflow-x: hidden; }
+        body { width: 100%; font-family: 'Inter', sans-serif; background: #F0F2F5; color: #1A1A1A; -webkit-font-smoothing: antialiased; padding-bottom: 40px; }
+
+        /* HEADER */
+        .header { padding: calc(16px + env(safe-area-inset-top)) 20px 16px; background: #F0F2F5; display: flex; align-items: center; justify-content: space-between; position: fixed; top: 0; left: 0; width: 100%; z-index: 100; }
+        .header-title { font-size: 18px; font-weight: 700; }
+        .header-btn { background: none; border: none; color: #0075FF; font-size: 16px; font-weight: 600; cursor: pointer; padding: 8px 4px; font-family: inherit; }
+        .header-btn:active { opacity: 0.7; }
+        .header-btn:disabled { color: #C0C4CC; cursor: not-allowed; }
+
+        /* CONTENT */
+        .content { padding: calc(72px + env(safe-area-inset-top)) 16px 20px; max-width: 600px; margin: 0 auto; }
+
+        /* CARD */
+        .form-card { background: white; border-radius: 16px; margin-bottom: 12px; overflow: hidden; }
+        .section-title { font-size: 12px; font-weight: 600; color: #9CA3AF; text-transform: uppercase; letter-spacing: 0.6px; padding: 0 4px; margin-top: 24px; margin-bottom: 8px; }
+        .content > .section-title:first-child { margin-top: 0; }
+
+        /* ROW */
+        .form-row { display: flex; align-items: center; min-height: 52px; padding: 0 16px; border-bottom: 1px solid #F0F2F5; gap: 12px; }
+        .form-row:last-child { border-bottom: none; }
+        .row-label { font-size: 14px; font-weight: 500; color: #1A1A1A; white-space: nowrap; flex-shrink: 0; }
+        .row-label.req::after { content: ' *'; color: #DC2626; }
+
+        /* RIGHT SIDE */
+        .row-right { flex: 1; display: flex; justify-content: flex-end; align-items: center; gap: 4px; }
+
+        /* Inline input (right-aligned, borderless) */
+        .row-input { flex: 1; text-align: right; border: none; outline: none; font-size: 14px; font-family: inherit; color: #1A1A1A; background: transparent; min-width: 0; }
+        .row-input::placeholder { color: #C0C4CC; }
+
+        /* Chevron for selects */
+        .chevron { width: 16px; height: 16px; flex-shrink: 0; }
+
+        /* BALANCE HINT */
+        .balance-hint { padding: 4px 16px 12px; font-size: 12px; color: #6B7280; }
+        .balance-hint strong { color: #DC2626; }
+
+        /* TOGGLE */
+        .toggle-wrap { position: relative; width: 44px; height: 26px; flex-shrink: 0; cursor: pointer; }
+        .toggle-input { position: absolute; opacity: 0; width: 0; height: 0; }
+        .toggle-track { display: block; width: 44px; height: 26px; border-radius: 13px; background: #D1D5DB; transition: background 0.2s; }
+        .toggle-input:checked + .toggle-track { background: #0075FF; }
+        .toggle-thumb { position: absolute; top: 3px; left: 3px; width: 20px; height: 20px; border-radius: 50%; background: white; box-shadow: 0 1px 3px rgba(0,0,0,0.25); transition: transform 0.2s; pointer-events: none; }
+        .toggle-input:checked ~ .toggle-thumb { transform: translateX(18px); }
+
+        /* NOTES */
+        .notes-area { width: 100%; border: none; outline: none; font-size: 14px; font-family: inherit; color: #1A1A1A; resize: none; background: transparent; padding: 13px 16px; min-height: 72px; }
+        .notes-area::placeholder { color: #C0C4CC; }
+
+        /* SUMMARY */
+        .summary-card { background: white; border-radius: 16px; margin-bottom: 12px; overflow: hidden; }
+        .summary-row { display: flex; justify-content: space-between; align-items: center; padding: 13px 16px; border-bottom: 1px solid #F0F2F5; font-size: 14px; }
+        .summary-row.total-row { border-bottom: none; border-top: 2px solid #F0F2F5; }
+        .summary-label { color: #6B7280; }
+        .summary-value { font-weight: 600; color: #1A1A1A; }
+        .summary-total { font-size: 17px; font-weight: 700; color: #0075FF; }
+
+        /* ITEM SELECTION SHEET */
+        .item-sheet-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 200; align-items: flex-end; justify-content: center; }
+        .item-sheet-overlay.show { display: flex; }
+        .item-sheet { background: white; width: 100%; max-width: 600px; border-radius: 20px 20px 0 0; max-height: 78vh; display: flex; flex-direction: column; transform: translateY(100%); transition: transform 0.32s cubic-bezier(0.32, 0.72, 0, 1); }
+        .item-sheet-overlay.show .item-sheet { transform: translateY(0); }
+        .item-sheet-handle { width: 36px; height: 4px; background: #E5E7EB; border-radius: 2px; margin: 12px auto 0; flex-shrink: 0; }
+        .item-sheet-header { padding: 12px 16px 0; flex-shrink: 0; }
+        .item-sheet-title { font-size: 16px; font-weight: 700; margin-bottom: 12px; }
+        .item-sheet-list { flex: 1; overflow-y: auto; padding: 8px 0 20px; }
+        .item-sheet-row { display: flex; align-items: center; justify-content: space-between; padding: 14px 16px; border-bottom: 1px solid #F0F2F5; cursor: pointer; }
+        .item-sheet-row:last-child { border-bottom: none; }
+        .item-sheet-row:active { background: #F9FAFB; }
+        .item-sheet-name { font-size: 14px; font-weight: 500; color: #1A1A1A; }
+
+
+        /* Currency wrapper — ₦ overlays input's left padding so they're visually fused */
+        .curr-wrap { position: relative; margin-left: auto; display: inline-flex; align-items: center; }
+        .curr-symbol { position: absolute; left: 0; font-size: 14px; color: #1A1A1A; pointer-events: none; line-height: 1; z-index: 1; }
+        .curr-input { padding-left: 11px !important; text-align: left; }
+
+        /* Discount expand section */
+        .discount-expand { display: none; padding: 0 16px 14px; border-top: 1px solid #F0F2F5; }
+        .discount-expand.open { display: block; padding-top: 14px; }
+        .outlined-box { flex: 1; border: 1.5px solid #E5E7EB; border-radius: 10px; padding: 10px 12px; position: relative; min-width: 0; }
+        .outlined-label { position: absolute; top: -7px; left: 10px; background: white; padding: 0 4px; font-size: 11px; color: #9CA3AF; font-weight: 600; white-space: nowrap; letter-spacing: 0.2px; }
+
+        /* Tappable item row display */
+        .item-row-display { flex: 1; display: flex; justify-content: flex-end; align-items: center; gap: 4px; cursor: pointer; }
+        .item-row-text { font-size: 14px; color: #C0C4CC; }
+
+        /* Inline cart rows inside Items card */
+        .inline-cart-item { display: flex; align-items: center; gap: 12px; padding: 12px 16px; border-top: 1px solid #F0F2F5; }
+        .inline-item-left { flex: 1; min-width: 0; }
+        .inline-item-name { font-size: 14px; font-weight: 500; color: #1A1A1A; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-bottom: 3px; }
+        .inline-item-price { font-size: 13px; font-weight: 600; color: #0075FF; }
+        .inline-item-right { display: flex; flex-direction: column; align-items: flex-end; gap: 6px; flex-shrink: 0; }
+        .inline-qty-controls { display: flex; align-items: center; gap: 6px; }
+        .inline-qty-btn { width: 26px; height: 26px; border-radius: 6px; background: #F0F2F5; border: none; font-size: 14px; font-weight: 600; cursor: pointer; display: flex; align-items: center; justify-content: center; font-family: inherit; line-height: 1; }
+        .inline-qty-btn:active { background: #E5E7EB; }
+        .inline-qty-val { font-size: 13px; font-weight: 600; min-width: 20px; text-align: center; }
+        .inline-remove { background: none; border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; padding: 2px; color: #9CA3AF; }
+        .inline-remove:active { color: #DC2626; }
+
+        /* INVOICE MODAL */
+        .invoice-modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.72); z-index: 300; align-items: flex-end; justify-content: center; }
+        .invoice-modal.show { display: flex; }
+        .invoice-sheet { background: #1C1C1E; width: 100%; max-width: 480px; height: 100dvh; border-radius: 24px 24px 0 0; display: flex; flex-direction: column; transform: translateY(100%); transition: transform 0.38s cubic-bezier(0.32, 0.72, 0, 1); }
+        .invoice-modal.show .invoice-sheet { transform: translateY(0); }
+        .inv-sheet-top { display: flex; justify-content: flex-end; padding: 14px 16px 0; flex-shrink: 0; }
+        .inv-close-x { width: 32px; height: 32px; border-radius: 50%; background: rgba(255,255,255,0.12); border: none; color: white; font-size: 15px; font-weight: 700; cursor: pointer; display: flex; align-items: center; justify-content: center; font-family: inherit; }
+        .inv-close-x:active { background: rgba(255,255,255,0.22); }
+        .inv-preview-area { flex: 1; display: flex; justify-content: center; align-items: center; padding: 0 28px; }
+        .inv-preview-wrap { position: relative; border-radius: 14px; overflow: hidden; cursor: pointer; width: 100%; max-width: 300px; height: 360px; background: white; box-shadow: 0 8px 32px rgba(0,0,0,0.55); }
+        .inv-preview-wrap::after { content: 'Tap to view full invoice'; position: absolute; bottom: 0; left: 0; right: 0; padding: 20px 0 10px; background: linear-gradient(rgba(255,255,255,0), rgba(255,255,255,0.97)); text-align: center; font-size: 11px; font-weight: 700; color: #0075FF; font-family: 'Inter', sans-serif; letter-spacing: 0.2px; }
+        .invoice-paper { background: white; padding: 18px; pointer-events: none; zoom: 0.54; }
+        .invoice-actions { padding: 16px 24px 44px; display: flex; align-items: flex-start; flex-shrink: 0; overflow-x: auto; gap: 24px; -webkit-overflow-scrolling: touch; scrollbar-width: none; }
+        .invoice-actions::-webkit-scrollbar { display: none; }
+        .inv-act-btn { display: flex; flex-direction: column; align-items: center; gap: 9px; background: none; border: none; cursor: pointer; font-family: inherit; padding: 0; flex-shrink: 0; }
+        .inv-act-icon { width: 66px; height: 66px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 26px; }
+        .inv-act-label { font-size: 10.5px; font-weight: 600; color: rgba(255,255,255,0.75); white-space: nowrap; }
+        .inv-act-btn.email .inv-act-icon { background: #0075FF; }
+        .inv-act-btn.wa .inv-act-icon { background: #25D366; }
+        .inv-act-btn.pdf .inv-act-icon { background: #DC2626; }
+        .inv-act-btn.sms .inv-act-icon { background: #4B5563; }
+        .inv-act-btn.print .inv-act-icon { background: #6366F1; }
+        .inv-act-btn.share .inv-act-icon { background: #374151; }
+        .inv-act-btn:active .inv-act-icon { opacity: 0.75; transform: scale(0.92); }
+
+        /* FULL INVOICE VIEW */
+        .invoice-full { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: white; z-index: 400; flex-direction: column; }
+        .invoice-full.show { display: flex; }
+        .inv-full-header { display: flex; align-items: center; gap: 12px; padding: 16px 20px; border-bottom: 1px solid #E5E7EB; flex-shrink: 0; }
+        .inv-full-back { background: none; border: none; font-size: 22px; cursor: pointer; color: #1A1A1A; line-height: 1; padding: 0; }
+        .inv-full-title { font-size: 16px; font-weight: 700; color: #1A1A1A; }
+        .inv-full-scroll { flex: 1; overflow-y: auto; padding: 20px; }
+        .inv-full-paper { background: white; max-width: 420px; margin: 0 auto; }
+        .inv-big-label { font-size: 26px; font-weight: 800; color: #1A1A1A; letter-spacing: -1px; line-height: 1; display: block; margin-bottom: 4px; }
+        .inv-biz-name-main { font-size: 16px; font-weight: 700; color: #1A1A1A; margin-bottom: 20px; }
+        .inv-info-card { border: 1.5px solid #E5E7EB; border-radius: 10px; padding: 14px 16px; display: flex; justify-content: space-between; margin-bottom: 20px; gap: 12px; }
+        .inv-bill-col { flex: 1; min-width: 0; }
+        .inv-meta-col { text-align: right; flex-shrink: 0; }
+        .inv-card-label { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.8px; color: #9CA3AF; margin-bottom: 4px; }
+        .inv-card-name { font-size: 14px; font-weight: 700; color: #1A1A1A; }
+        .inv-card-sub { font-size: 12px; color: #6B7280; margin-top: 2px; line-height: 1.5; }
+        .inv-meta-item { margin-bottom: 8px; }
+        .inv-meta-item:last-child { margin-bottom: 0; }
+        .inv-meta-val { font-size: 12px; font-weight: 600; color: #1A1A1A; }
+        .inv-status-badge { display: inline-block; padding: 3px 10px; border-radius: 20px; font-size: 11px; font-weight: 700; }
+        .inv-table { width: 100%; border-collapse: collapse; }
+        .inv-table thead tr { background: #F9FAFB; }
+        .inv-table th { font-size: 10px; font-weight: 700; color: #6B7280; text-transform: uppercase; letter-spacing: 0.5px; padding: 8px; border-top: 1px solid #E5E7EB; border-bottom: 1px solid #E5E7EB; text-align: left; }
+        .inv-table th:nth-child(2) { text-align: right; }
+        .inv-table th:nth-child(3) { text-align: center; }
+        .inv-table th:last-child { text-align: right; }
+        .inv-table td { font-size: 13px; color: #1A1A1A; padding: 10px 8px; border-bottom: 1px solid #F3F4F6; vertical-align: top; }
+        .inv-table td.item-name { font-weight: 600; }
+        .inv-table td:nth-child(2) { text-align: right; color: #6B7280; }
+        .inv-table td:nth-child(3) { text-align: center; color: #6B7280; }
+        .inv-table td:last-child { text-align: right; font-weight: 700; }
+        .inv-totals { padding: 10px 0 0; }
+        .inv-total-row { display: flex; justify-content: flex-end; align-items: center; padding: 3px 0; font-size: 13px; }
+        .inv-total-row .lbl { color: #6B7280; width: 110px; text-align: right; margin-right: 20px; }
+        .inv-total-row .val { font-weight: 600; color: #1A1A1A; min-width: 70px; text-align: right; }
+        .inv-amount-due { display: flex; justify-content: flex-end; align-items: center; padding: 12px 0; border-top: 1.5px solid #E5E7EB; margin-top: 8px; font-size: 15px; font-weight: 700; }
+        .inv-amount-due .lbl { width: 110px; text-align: right; margin-right: 20px; color: #1A1A1A; }
+        .inv-amount-due .val { min-width: 70px; text-align: right; color: #1A1A1A; }
+        .inv-balance-box { background: #FEF3C7; border-radius: 10px; padding: 12px 14px; margin-top: 16px; }
+        .inv-balance-row { display: flex; justify-content: space-between; font-size: 13px; margin-bottom: 4px; }
+        .inv-balance-row:last-child { margin-bottom: 0; }
+        .inv-footer { text-align: center; padding-top: 16px; margin-top: 20px; border-top: 1px dashed #E5E7EB; }
+        .inv-footer-thanks { font-size: 13px; font-weight: 700; color: #1A1A1A; margin-bottom: 4px; }
+        .inv-footer-powered { font-size: 11px; color: #9CA3AF; }
+
+        @media print {
+            body * { visibility: hidden !important; }
+            .invoice-full, .invoice-full * { visibility: visible !important; }
+            .invoice-full { position: absolute; top: 0; left: 0; display: flex !important; background: white; }
+            .inv-full-header { display: none !important; }
+            .inv-full-scroll { overflow: visible; padding: 0; }
+        }
+
+        /* LOADING */
+        .loading { display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: white; padding: 24px; border-radius: 16px; box-shadow: 0 4px 12px rgba(0,0,0,0.2); z-index: 500; text-align: center; }
+        .loading.show { display: block; }
+        .spinner { width: 40px; height: 40px; border: 4px solid #E5E7EB; border-top-color: #0075FF; border-radius: 50%; animation: spin 0.8s linear infinite; margin: 0 auto 12px; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        /* TOAST */
+        .toast { position: fixed; bottom: 100px; left: 50%; transform: translateX(-50%) translateY(20px); background: #1A1A1A; color: white; padding: 12px 20px; border-radius: 12px; font-size: 13px; font-weight: 600; opacity: 0; transition: all 0.3s; pointer-events: none; white-space: nowrap; z-index: 999; }
+        .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+        .toast.success { background: #059669; }
+        .toast.error { background: #DC2626; }
+    </style>
+</head>
+<body>
+
+    <div class="header">
+        <button class="header-btn" onclick="window.location.href=returnTo">Cancel</button>
+        <div class="header-title">Record Sale</div>
+        <button class="header-btn" id="saveBtn" disabled>Save</button>
+    </div>
+
+    <div class="content">
+
+        <!-- CUSTOMER -->
+        <div class="section-title">Customer</div>
+        <div class="form-card">
+            <div class="form-row" onclick="goSelectCustomer()" style="cursor:pointer;">
+                <span class="row-label">Customer</span>
+                <div class="row-right">
+                    <span id="customerRowText" style="font-size:14px;color:#C0C4CC;">Select customer...</span>
+                    <button id="clearCustomerBtn" onclick="clearCustomer(event)" style="display:none;width:20px;height:20px;border-radius:50%;background:#E5E7EB;border:none;color:#6B7280;font-size:13px;cursor:pointer;align-items:center;justify-content:center;margin-left:6px;flex-shrink:0;">×</button>
+                    <svg class="chevron" viewBox="0 0 16 16" fill="none" style="margin-left:4px;"><path d="M4 6l4 4 4-4" stroke="#C0C4CC" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                </div>
+            </div>
+        </div>
+
+        <!-- ADD ITEMS -->
+        <div class="section-title">Items</div>
+        <div class="form-card">
+            <div class="form-row" onclick="goSelectItems()" style="cursor:pointer;">
+                <span class="row-label req">Items</span>
+                <div class="item-row-display">
+                    <span class="item-row-text" id="itemRowText">Add Item</span>
+                    <svg class="chevron" viewBox="0 0 16 16" fill="none"><path d="M4 6l4 4 4-4" stroke="#C0C4CC" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                </div>
+            </div>
+            <div id="inlineCart"></div>
+        </div>
+
+        <!-- PRICING ADJUSTMENTS -->
+        <div class="section-title">Adjustments</div>
+        <div class="form-card">
+            <div class="form-row" onclick="toggleDiscount()" style="cursor:pointer;">
+                <span class="row-label">Discount</span>
+                <div class="row-right">
+                    <span id="discountSummary" style="font-size:14px;color:#6B7280;">- ₦0</span>
+                    <svg class="chevron" id="discountChevron" viewBox="0 0 16 16" fill="none" style="transition:transform 0.22s;"><path d="M4 6l4 4 4-4" stroke="#C0C4CC" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                </div>
+            </div>
+            <div class="discount-expand" id="discountExpand">
+                <div style="display:flex;gap:10px;">
+                    <div class="outlined-box" style="cursor:pointer;" onclick="openSheet('discountType')">
+                        <span class="outlined-label">Discount Type</span>
+                        <div style="display:flex;align-items:center;justify-content:space-between;margin-top:4px;">
+                            <span id="discountTypeDisplay" style="font-size:14px;font-weight:500;color:#1A1A1A;">Fixed (₦)</span>
+                            <svg width="14" height="14" viewBox="0 0 16 16" fill="none"><path d="M4 6l4 4 4-4" stroke="#9CA3AF" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                        </div>
+                    </div>
+                    <div class="outlined-box" style="cursor:text;" onclick="document.getElementById('discountInput').focus()">
+                        <span class="outlined-label" id="discountValueLabel">Amount (₦)</span>
+                        <input type="number" id="discountInput" class="row-input" placeholder="0" min="0" value="0" autocomplete="off" oninput="onDiscountInput(this)" style="width:100%;text-align:left;padding:0;font-size:14px;font-weight:500;margin-top:4px;">
+                    </div>
+                </div>
+            </div>
+            <div class="form-row">
+                <span class="row-label">Extra Profit</span>
+                <div class="curr-wrap"><span class="curr-symbol">₦</span><input type="number" class="row-input curr-input" id="extraProfitInput" placeholder="0" min="0" value="0" autocomplete="off" oninput="sizeCurrencyInput(this)" style="flex:none;width:29px;padding:0 0 0 11px;"></div>
+            </div>
+            <div style="padding: 0 16px 10px;"><span style="font-size:11px;color:#9CA3AF;">Markup above your cost price — not shown on the customer invoice.</span></div>
+            <div class="form-row">
+                <span class="row-label">Additional Charge</span>
+                <div class="curr-wrap"><span class="curr-symbol">₦</span><input type="number" class="row-input curr-input" id="additionalInput" placeholder="0" min="0" value="0" autocomplete="off" oninput="sizeCurrencyInput(this)" style="flex:none;width:29px;padding:0 0 0 11px;"></div>
+            </div>
+        </div>
+
+        <!-- PAYMENT METHOD -->
+        <div class="section-title">Payment Status</div>
+        <div class="form-card">
+            <div class="form-row" onclick="openSheet('payment')" style="cursor:pointer;">
+                <span class="row-label req">Payment</span>
+                <div class="row-right">
+                    <span id="paymentDisplay" style="font-size:14px;color:#1A1A1A;">Cash</span>
+                    <svg class="chevron" viewBox="0 0 16 16" fill="none"><path d="M4 6l4 4 4-4" stroke="#C0C4CC" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                </div>
+            </div>
+            <div id="partialPaymentContainer">
+                <div class="form-row" style="border-top: 1px solid #F0F2F5;">
+                    <span class="row-label">Partial Payment</span>
+                    <div class="row-right">
+                        <label class="toggle-wrap">
+                            <input type="checkbox" class="toggle-input" id="partialPayment">
+                            <span class="toggle-track"></span>
+                            <span class="toggle-thumb"></span>
+                        </label>
+                    </div>
+                </div>
+                <div id="partialPaymentSection" style="display:none;">
+                    <div class="form-row">
+                        <span class="row-label">Amount Paid</span>
+                        <div class="curr-wrap"><span class="curr-symbol">₦</span><input type="number" class="row-input curr-input" id="amountPaidInput" placeholder="0" min="0" value="0" autocomplete="off" oninput="sizeCurrencyInput(this)" style="flex:none;width:29px;padding:0 0 0 11px;"></div>
+                    </div>
+                    <div class="balance-hint">Balance: <strong id="balancePreview">₦0</strong></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- DETAILS -->
+        <div class="section-title">Details</div>
+        <div class="form-card">
+            <div class="form-row" onclick="openSheet('channel')" style="cursor:pointer;">
+                <span class="row-label req">Sales Channel</span>
+                <div class="row-right">
+                    <span id="channelDisplay" style="font-size:14px;color:#1A1A1A;">Store</span>
+                    <svg class="chevron" viewBox="0 0 16 16" fill="none"><path d="M4 6l4 4 4-4" stroke="#C0C4CC" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                </div>
+            </div>
+            <div class="form-row">
+                <span class="row-label">Sale Date</span>
+                <input type="date" class="row-input" id="saleDateInput">
+            </div>
+            <div style="border-top: 1px solid #F0F2F5;">
+                <textarea class="notes-area" id="notesInput" placeholder="Notes (optional)..."></textarea>
+            </div>
+        </div>
+
+        <!-- GENERATE INVOICE -->
+        <div class="section-title">Invoice</div>
+        <div class="form-card">
+            <div class="form-row">
+                <span class="row-label">Generate Invoice</span>
+                <div class="row-right">
+                    <label class="toggle-wrap">
+                        <input type="checkbox" class="toggle-input" id="generateReceipt" checked>
+                        <span class="toggle-track"></span>
+                        <span class="toggle-thumb"></span>
+                    </label>
+                </div>
+            </div>
+        </div>
+
+        <!-- SUMMARY -->
+        <div class="section-title">Summary</div>
+        <div class="summary-card">
+            <div class="summary-row">
+                <span class="summary-label">Subtotal</span>
+                <span class="summary-value" id="subtotal">₦0</span>
+            </div>
+            <div class="summary-row">
+                <span class="summary-label">Discount (−)</span>
+                <span class="summary-value" id="discountAmount">₦0</span>
+            </div>
+            <div class="summary-row">
+                <span class="summary-label">Extra Profit (+)</span>
+                <span class="summary-value" id="extraProfitAmount">₦0</span>
+            </div>
+            <div class="summary-row">
+                <span class="summary-label">Additional (+)</span>
+                <span class="summary-value" id="additionalAmount">₦0</span>
+            </div>
+            <div class="summary-row total-row">
+                <span class="summary-label" style="font-weight:600;color:#1A1A1A;">Total</span>
+                <span class="summary-total" id="total">₦0</span>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- OPTION SHEET (Payment & Channel) -->
+    <div class="item-sheet-overlay" id="optionSheetOverlay" onclick="closeOptionSheet(event)">
+        <div class="item-sheet">
+            <div class="item-sheet-handle"></div>
+            <div class="item-sheet-header">
+                <div class="item-sheet-title" id="optionSheetTitle">Select</div>
+            </div>
+            <div class="item-sheet-list" id="optionSheetList"></div>
+        </div>
+    </div>
+
+    <!-- INVOICE MODAL -->
+    <div class="invoice-modal" id="receiptModal">
+        <div class="invoice-sheet">
+            <div class="inv-sheet-top">
+                <button class="inv-close-x" onclick="closeReceipt()">✕</button>
+            </div>
+            <div class="inv-preview-area">
+                <div class="inv-preview-wrap" onclick="openFullInvoice()">
+                    <div class="invoice-paper" id="invoicePaper"></div>
+                </div>
+            </div>
+            <div class="invoice-actions">
+                <button class="inv-act-btn email" onclick="shareEmail()">
+                    <div class="inv-act-icon">✉️</div>
+                    <span class="inv-act-label">Email</span>
+                </button>
+                <button class="inv-act-btn wa" onclick="shareWhatsApp()">
+                    <div class="inv-act-icon">
+                        <svg width="28" height="28" viewBox="0 0 32 32" fill="none"><path d="M16 3C8.82 3 3 8.82 3 16c0 2.4.64 4.65 1.76 6.6L3 29l6.6-1.73A13 13 0 0 0 16 29c7.18 0 13-5.82 13-13S23.18 3 16 3Z" fill="white"/><path d="M21.8 18.84c-.3-.15-1.76-.87-2.03-.97-.28-.1-.48-.15-.68.15s-.78.97-.96 1.17c-.18.2-.35.22-.65.07-.3-.15-1.26-.46-2.4-1.47-.89-.79-1.49-1.76-1.66-2.06-.17-.3-.02-.46.13-.61.13-.13.3-.35.45-.52.15-.17.2-.3.3-.5.1-.2.05-.37-.02-.52-.08-.15-.68-1.63-.93-2.23-.24-.58-.49-.5-.68-.51-.17 0-.37-.02-.57-.02-.2 0-.52.07-.8.37-.27.3-1.04 1.02-1.04 2.48s1.07 2.88 1.22 3.08c.15.2 2.1 3.2 5.08 4.49.71.3 1.26.49 1.69.62.71.23 1.36.2 1.87.12.57-.09 1.76-.72 2.01-1.41.25-.7.25-1.29.17-1.41-.07-.12-.27-.2-.57-.35Z" fill="#25D366"/></svg>
+                    </div>
+                    <span class="inv-act-label">WhatsApp</span>
+                </button>
+                <button class="inv-act-btn pdf" onclick="sharePDF()">
+                    <div class="inv-act-icon">⬇️</div>
+                    <span class="inv-act-label">PDF</span>
+                </button>
+                <button class="inv-act-btn sms" onclick="shareSMS()">
+                    <div class="inv-act-icon">💬</div>
+                    <span class="inv-act-label">SMS</span>
+                </button>
+                <button class="inv-act-btn print" onclick="sharePDF()">
+                    <div class="inv-act-icon">🖨️</div>
+                    <span class="inv-act-label">Print</span>
+                </button>
+                <button class="inv-act-btn share" onclick="shareNative()">
+                    <div class="inv-act-icon">↗️</div>
+                    <span class="inv-act-label">Share</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- FULL INVOICE VIEW -->
+    <div class="invoice-full" id="invoiceFull">
+        <div class="inv-full-header">
+            <button class="inv-full-back" onclick="closeFullInvoice()">←</button>
+            <div class="inv-full-title">Invoice</div>
+        </div>
+        <div class="inv-full-scroll">
+            <div class="inv-full-paper" id="invoicePaperFull"></div>
+        </div>
+    </div>
+
+    <div class="toast" id="toast"></div>
+
+    <div class="loading" id="loading">
+        <div class="spinner"></div>
+        <div style="font-size: 14px; color: #6B7280;">Processing...</div>
+    </div>
+
+<script>
+    // ── Supabase ───────────────────────────────────────────────────────
+    const sb = supabase.createClient(
+        'https://ufcpvbabgtftyfumzpnp.supabase.co',
+        'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVmY3B2YmFiZ3RmdHlmdW16cG5wIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ4ODEwMzcsImV4cCI6MjA5MDQ1NzAzN30.TzFJxnc8_ykXegNo2oMlN0xHXPkwHQcYNMAFMJorq5U'
+    );
+    let currentUser = null;
+    let returnTo = new URLSearchParams(window.location.search).get('from') === 'home' ? 'home.html' : 'sales.html';
+
+    // ── Business data for invoice (populated from Supabase) ────────────
+    const businessData = {
+        name: localStorage.getItem('methang_business_name') || 'My Business',
+        phone: '',
+        email: '',
+        logo_url: '',
+    };
+
+    // ── State ──────────────────────────────────────────────────────────
+    let cart = [];
+    let selectedCustomer = null;
+    let selectedPaymentMethod = 'cash';
+    let selectedChannel = 'store';
+    let discount = 0;
+    let discountType = 'fixed'; // 'fixed' | 'percent'
+    let discountOpen = false;
+    let extraProfit = 0;
+    let additional = 0;
+    let isPartialPayment = false;
+    let amountPaid = 0;
+
+    // ── Set default sale date to today ────────────────────────────────
+    const today = new Date().toISOString().split('T')[0];
+    document.getElementById('saleDateInput').value = today;
+
+    // ── Auth ───────────────────────────────────────────────────────────
+    async function checkAuth() {
+        const { data: { session } } = await sb.auth.getSession();
+        if (!session) { window.location.href = 'login.html'; return false; }
+        currentUser = session.user;
+        return true;
+    }
+
+    // ── Load business profile for invoice ─────────────────────────────
+    async function loadData() {
+        if (!await checkAuth()) return;
+        try {
+            const { data: profile } = await sb
+                .from('profiles')
+                .select('business_name, phone, email, logo_url')
+                .eq('id', currentUser.id)
+                .single();
+            if (profile) {
+                if (profile.business_name) businessData.name = profile.business_name;
+                if (profile.phone) businessData.phone = profile.phone;
+                if (profile.email) businessData.email = profile.email;
+                if (profile.logo_url) businessData.logo_url = profile.logo_url;
+            }
+        } catch(e) {
+            console.log('Profile load skipped:', e.message);
+        }
+    }
+
+    // ── Option Sheet (Payment & Channel) ──────────────────────────────
+    const CHANNEL_ICONS = {
+        store:     { color:'#6366F1', svg:'<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>' },
+        instagram: { color:'#E1306C', svg:'<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="20" height="20" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.5" cy="6.5" r="1" fill="white" stroke="none"/></svg>' },
+        whatsapp:  { color:'#25D366', svg:'<svg width="18" height="18" viewBox="0 0 24 24" fill="white"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/><path d="M12 0C5.373 0 0 5.373 0 12c0 2.127.558 4.126 1.533 5.858L.057 23.428a.5.5 0 0 0 .614.614l5.57-1.476A11.95 11.95 0 0 0 12 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 22c-1.907 0-3.693-.528-5.222-1.443l-.374-.222-3.875 1.027 1.027-3.766-.245-.388A9.953 9.953 0 0 1 2 12C2 6.486 6.486 2 12 2s10 4.486 10 10-4.486 10-10 10z"/></svg>' },
+        tiktok:    { color:'#010101', svg:'<svg width="18" height="18" viewBox="0 0 24 24" fill="white"><path d="M19.59 6.69a4.83 4.83 0 0 1-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 0 1-2.88 2.5 2.89 2.89 0 0 1-2.89-2.89 2.89 2.89 0 0 1 2.89-2.89c.28 0 .54.04.79.1V9.01a6.33 6.33 0 0 0-.79-.05 6.34 6.34 0 0 0-6.34 6.34 6.34 6.34 0 0 0 6.34 6.34 6.34 6.34 0 0 0 6.33-6.34V8.69a8.18 8.18 0 0 0 4.78 1.52V6.75a4.85 4.85 0 0 1-1.01-.06z"/></svg>' },
+        facebook:  { color:'#1877F2', svg:'<svg width="18" height="18" viewBox="0 0 24 24" fill="white"><path d="M24 12.073C24 5.405 18.627 0 12 0S0 5.405 0 12.073C0 18.1 4.388 23.094 10.125 24v-8.437H7.078v-3.49h3.047V9.41c0-3.025 1.791-4.697 4.533-4.697 1.312 0 2.686.236 2.686.236v2.97h-1.513c-1.491 0-1.956.931-1.956 1.886v2.268h3.328l-.532 3.49h-2.796V24C19.612 23.094 24 18.1 24 12.073z"/></svg>' },
+        twitter:   { color:'#000000', svg:'<svg width="16" height="16" viewBox="0 0 24 24" fill="white"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-4.714-6.231-5.401 6.231H2.744l7.737-8.835L1.254 2.25H8.08l4.259 5.631 5.905-5.631zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>' },
+        website:   { color:'#0075FF', svg:'<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>' },
+        amazon:    { color:'#FF9900', svg:'<svg width="18" height="18" viewBox="0 0 24 24" fill="white"><path d="M13.5 9.5c0 .9 0 1.6-.4 2.4-.4.7-.9 1-1.6 1-.9 0-1.4-.7-1.4-1.7 0-2 1.7-2.3 3.4-2.3v.6zm2.3 5.6c-.2.1-.4.1-.5 0-.8-.6-.9-.9-1.3-1.5-1.3 1.3-2.1 1.7-3.8 1.7-1.9 0-3.4-1.2-3.4-3.6 0-1.9 1-3.1 2.4-3.7 1.2-.6 3-.7 4.3-.8V7c0-.5 0-1.1-.3-1.5-.2-.4-.7-.5-1.2-.5-.8 0-1.5.4-1.7 1.2 0 .2-.2.4-.4.4l-2-.2c-.2 0-.4-.2-.3-.4.5-2.4 2.5-3.1 4.4-3.1.9 0 2.1.3 2.8.9.9.8.8 2 .8 3.2v2.9c0 .9.4 1.3.7 1.7.1.2.1.4 0 .5l-1 .9zM19 17.2c-1.8 1.3-4.4 2-6.7 2-3.2 0-6-.1-8.2-3.1-.2-.2 0-.4.2-.2 2.3 1.4 5.2 2.2 8.2 2.2 2 0 4.2-.4 6.2-1.3.3-.1.6.2.3.4zm.8-.9c-.2-.3-1.5-.1-2.1-.1-.2 0-.2-.1 0-.2 1-.7 2.7-.5 2.9-.3.2.3-.1 1.9-1 2.8-.1.1-.3.1-.2-.1.2-.5.7-1.8.4-2.1z"/></svg>' },
+        others:    { color:'#9CA3AF', svg:'<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg>' },
+    };
+
+    const SHEET_OPTIONS = {
+        payment: {
+            title: 'Payment Method',
+            options: [
+                { value: 'cash', label: 'Cash' },
+                { value: 'transfer', label: 'Transfer' },
+                { value: 'pos', label: 'POS' },
+                { value: 'not_paid', label: 'Not Paid' },
+            ]
+        },
+        discountType: {
+            title: 'Discount Type',
+            options: [
+                { value: 'fixed',   label: 'Fixed (₦)' },
+                { value: 'percent', label: 'Percentage (%)' },
+            ]
+        },
+        channel: {
+            title: 'Sales Channel',
+            options: [
+                { value: 'store',     label: 'Store' },
+                { value: 'instagram', label: 'Instagram' },
+                { value: 'whatsapp',  label: 'WhatsApp' },
+                { value: 'tiktok',    label: 'TikTok' },
+                { value: 'facebook',  label: 'Facebook' },
+                { value: 'twitter',   label: 'X (Twitter)' },
+                { value: 'website',   label: 'Website' },
+                { value: 'amazon',    label: 'Amazon' },
+                { value: 'others',    label: 'Others' },
+            ]
+        }
+    };
+    let currentSheetType = null;
+
+    function openSheet(type) {
+        currentSheetType = type;
+        const config = SHEET_OPTIONS[type];
+        document.getElementById('optionSheetTitle').textContent = config.title;
+        const currentVal = type === 'payment' ? selectedPaymentMethod : type === 'discountType' ? discountType : selectedChannel;
+        const isChannel = type === 'channel';
+        document.getElementById('optionSheetList').innerHTML = config.options.map(o => {
+            const icon = isChannel && CHANNEL_ICONS[o.value];
+            const selected = o.value === currentVal;
+            return `
+            <div class="item-sheet-row" onclick="selectSheetOption('${o.value}')" style="${selected ? 'background:#F0F6FF;' : ''}">
+                <div style="display:flex;align-items:center;gap:12px;flex:1;min-width:0;">
+                    ${icon ? `<div style="width:36px;height:36px;border-radius:10px;background:${icon.color};display:flex;align-items:center;justify-content:center;flex-shrink:0;">${icon.svg}</div>` : ''}
+                    <span class="item-sheet-name" style="${selected ? 'color:#0075FF;font-weight:600;' : ''}">${o.label}</span>
+                </div>
+                ${selected ? '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#0075FF" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>' : ''}
+            </div>`;
+        }).join('');
+        document.getElementById('optionSheetOverlay').classList.add('show');
+        document.body.style.overflow = 'hidden';
+    }
+
+    function selectSheetOption(value) {
+        if (currentSheetType === 'payment') {
+            selectedPaymentMethod = value;
+            const labels = { cash:'Cash', transfer:'Transfer', pos:'POS', not_paid:'Not Paid' };
+            document.getElementById('paymentDisplay').textContent = labels[value];
+            const partialContainer = document.getElementById('partialPaymentContainer');
+            if (value === 'not_paid') {
+                partialContainer.style.display = 'none';
+                document.getElementById('partialPayment').checked = false;
+                isPartialPayment = false; amountPaid = 0;
+                document.getElementById('partialPaymentSection').style.display = 'none';
+            } else {
+                partialContainer.style.display = 'block';
+            }
+        } else if (currentSheetType === 'discountType') {
+            discountType = value;
+            const isPercent = value === 'percent';
+            document.getElementById('discountTypeDisplay').textContent = isPercent ? 'Percentage (%)' : 'Fixed (₦)';
+            document.getElementById('discountValueLabel').textContent = isPercent ? 'Percentage (%)' : 'Amount (₦)';
+            document.getElementById('discountInput').value = 0;
+            discount = 0;
+            updateSummary();
+        } else {
+            selectedChannel = value;
+            const labels = { store:'Store', instagram:'Instagram', whatsapp:'WhatsApp', tiktok:'TikTok', facebook:'Facebook', twitter:'X (Twitter)', website:'Website', amazon:'Amazon', others:'Others' };
+            document.getElementById('channelDisplay').textContent = labels[value] || value;
+        }
+        document.getElementById('optionSheetOverlay').classList.remove('show');
+        document.body.style.overflow = '';
+    }
+
+    function closeOptionSheet(e) {
+        if (e && e.target !== document.getElementById('optionSheetOverlay')) return;
+        document.getElementById('optionSheetOverlay').classList.remove('show');
+        document.body.style.overflow = '';
+    }
+
+    // ── Item Selection ─────────────────────────────────────────────────
+    function goSelectItems() {
+        localStorage.setItem('methang_form_state', JSON.stringify({
+            cart, discount, discountType, extraProfit, additional,
+            selectedPaymentMethod, selectedChannel,
+            isPartialPayment, amountPaid,
+            paymentDisplayText: document.getElementById('paymentDisplay').textContent,
+            channelDisplayText: document.getElementById('channelDisplay').textContent,
+            notes: document.getElementById('notesInput').value,
+            saleDate: document.getElementById('saleDateInput').value,
+            generateInvoice: document.getElementById('generateReceipt').checked,
+            returnTo,
+            selectedCustomer,
+        }));
+        localStorage.setItem('methang_picking_items', 'true');
+        window.location.href = 'select-items.html';
+    }
+
+    function renderInlineCart() {
+        const el = document.getElementById('inlineCart');
+        if (!cart.length) {
+            el.innerHTML = '';
+            document.getElementById('itemRowText').textContent = 'Add Item';
+            return;
+        }
+        document.getElementById('itemRowText').textContent = cart.length === 1 ? '1 item' : `${cart.length} items`;
+        el.innerHTML = cart.map(item => `
+            <div class="inline-cart-item">
+                <div class="inline-item-left">
+                    <div class="inline-item-name">${item.product.name}</div>
+                    <div class="inline-item-price">₦${(item.quantity * item.product.price).toLocaleString()}</div>
+                </div>
+                <div class="inline-item-right">
+                    <div class="inline-qty-controls">
+                        <button class="inline-qty-btn" onclick="changeCartQty(${item.id}, -1)">−</button>
+                        <span class="inline-qty-val">${item.quantity}</span>
+                        <button class="inline-qty-btn" onclick="changeCartQty(${item.id}, 1)">+</button>
+                    </div>
+                    <button class="inline-remove" onclick="removeFromCart(${item.id})">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/></svg>
+                    </button>
+                </div>
+            </div>
+        `).join('');
+    }
+
+    // ── Customer Selection ─────────────────────────────────────────────
+    function goSelectCustomer() {
+        localStorage.setItem('methang_form_state', JSON.stringify({
+            cart, discount, discountType, extraProfit, additional,
+            selectedPaymentMethod, selectedChannel,
+            isPartialPayment, amountPaid,
+            paymentDisplayText: document.getElementById('paymentDisplay').textContent,
+            channelDisplayText: document.getElementById('channelDisplay').textContent,
+            notes: document.getElementById('notesInput').value,
+            saleDate: document.getElementById('saleDateInput').value,
+            generateInvoice: document.getElementById('generateReceipt').checked,
+            returnTo,
+            selectedCustomer,
+        }));
+        window.location.href = 'customers.html?picking=true';
+    }
+
+    function selectCustomer(customer) {
+        selectedCustomer = customer;
+        const text = document.getElementById('customerRowText');
+        text.textContent = customer.name;
+        text.style.color = '#1A1A1A';
+        const clearBtn = document.getElementById('clearCustomerBtn');
+        clearBtn.style.display = 'flex';
+        updateComplete();
+    }
+
+    function clearCustomer(e) {
+        if (e) e.stopPropagation();
+        selectedCustomer = null;
+        const text = document.getElementById('customerRowText');
+        text.textContent = 'Select customer...';
+        text.style.color = '#C0C4CC';
+        document.getElementById('clearCustomerBtn').style.display = 'none';
+        updateComplete();
+    }
+
+    const saveBtn = document.getElementById('saveBtn');
+
+    // ── Restore form state ─────────────────────────────────────────────
+    const savedState = localStorage.getItem('methang_form_state');
+    if (savedState) {
+        const s = JSON.parse(savedState);
+        cart = s.cart || [];
+        discount = s.discount || 0;
+        discountType = s.discountType || 'fixed';
+        extraProfit = s.extraProfit || 0;
+        additional = s.additional || 0;
+        selectedPaymentMethod = s.selectedPaymentMethod || 'cash';
+        selectedChannel = s.selectedChannel || 'store';
+        isPartialPayment = s.isPartialPayment || false;
+        amountPaid = s.amountPaid || 0;
+
+        document.getElementById('paymentDisplay').textContent = s.paymentDisplayText || 'Cash';
+        document.getElementById('channelDisplay').textContent = s.channelDisplayText || 'Store';
+        document.getElementById('discountInput').value = discount;
+        document.getElementById('discountTypeDisplay').textContent = discountType === 'percent' ? 'Percentage (%)' : 'Fixed (₦)';
+        document.getElementById('discountValueLabel').textContent = discountType === 'percent' ? 'Percentage (%)' : 'Amount (₦)';
+        updateDiscountSummary();
+        document.getElementById('extraProfitInput').value = extraProfit; sizeCurrencyInput(document.getElementById('extraProfitInput'));
+        document.getElementById('additionalInput').value = additional; sizeCurrencyInput(document.getElementById('additionalInput'));
+        document.getElementById('notesInput').value = s.notes || '';
+        document.getElementById('saleDateInput').value = s.saleDate || today;
+        document.getElementById('generateReceipt').checked = s.generateInvoice !== false;
+        if (s.returnTo) returnTo = s.returnTo;
+
+        if (selectedPaymentMethod === 'not_paid') {
+            document.getElementById('partialPaymentContainer').style.display = 'none';
+        }
+        if (isPartialPayment) {
+            document.getElementById('partialPayment').checked = true;
+            document.getElementById('partialPaymentSection').style.display = 'block';
+            document.getElementById('amountPaidInput').value = amountPaid;
+            sizeCurrencyInput(document.getElementById('amountPaidInput'));
+        }
+        if (s.selectedCustomer) selectCustomer(s.selectedCustomer);
+        renderInlineCart();
+        updateSummary();
+        localStorage.removeItem('methang_form_state');
+    }
+
+    // Check if returning from customer picker via URL params (Median app) or localStorage (browser)
+    const _rsp = new URLSearchParams(window.location.search);
+    if (_rsp.get('cid')) {
+        selectCustomer({ id: _rsp.get('cid'), name: _rsp.get('cname'), phone: _rsp.get('cphone') });
+    } else {
+        const pendingCustomer = localStorage.getItem('methang_selected_customer');
+        if (pendingCustomer) {
+            selectCustomer(JSON.parse(pendingCustomer));
+            localStorage.removeItem('methang_selected_customer');
+        }
+    }
+
+    // Fallback: re-check on pageshow in case WebView restored page from BFCache
+    window.addEventListener('pageshow', () => {
+        const _p = new URLSearchParams(window.location.search);
+        if (_p.get('cid') && !selectedCustomer) {
+            selectCustomer({ id: _p.get('cid'), name: _p.get('cname'), phone: _p.get('cphone') });
+        } else {
+            const pending = localStorage.getItem('methang_selected_customer');
+            if (pending) {
+                selectCustomer(JSON.parse(pending));
+                localStorage.removeItem('methang_selected_customer');
+            }
+        }
+    });
+
+    function removeFromCart(id) {
+        cart = cart.filter(i => i.id !== id);
+        renderInlineCart();
+        updateSummary();
+    }
+
+    function changeCartQty(id, delta) {
+        const item = cart.find(i => i.id === id);
+        if (!item) return;
+        item.quantity = Math.max(1, item.quantity + delta);
+        renderInlineCart();
+        updateSummary();
+    }
+
+    // ── Inputs ─────────────────────────────────────────────────────────
+    document.getElementById('extraProfitInput').addEventListener('input', e => { extraProfit = parseFloat(e.target.value) || 0; updateSummary(); });
+    document.getElementById('additionalInput').addEventListener('input', e => { additional = parseFloat(e.target.value) || 0; updateSummary(); });
+
+    document.getElementById('partialPayment').addEventListener('change', e => {
+        isPartialPayment = e.target.checked;
+        document.getElementById('partialPaymentSection').style.display = isPartialPayment ? 'block' : 'none';
+        if (!isPartialPayment) { document.getElementById('amountPaidInput').value = 0; amountPaid = 0; }
+        updateSummary();
+    });
+
+    document.getElementById('amountPaidInput').addEventListener('input', e => { amountPaid = parseFloat(e.target.value) || 0; updateSummary(); });
+
+    function updateSummary() {
+        const subtotal = cart.reduce((sum, item) => sum + item.product.price * item.quantity, 0);
+        const discountAmt = discountType === 'percent' ? subtotal * (discount / 100) : discount;
+        const total = subtotal - discountAmt + extraProfit + additional;
+        document.getElementById('subtotal').textContent = '₦' + subtotal.toLocaleString();
+        document.getElementById('discountAmount').textContent = '₦' + discountAmt.toLocaleString();
+        document.getElementById('extraProfitAmount').textContent = '₦' + extraProfit.toLocaleString();
+        document.getElementById('additionalAmount').textContent = '₦' + additional.toLocaleString();
+        document.getElementById('total').textContent = '₦' + total.toLocaleString();
+        if (isPartialPayment) {
+            document.getElementById('balancePreview').textContent = '₦' + Math.max(0, total - amountPaid).toLocaleString();
+        }
+        updateComplete();
+    }
+
+    function updateComplete() {
+        const ready = cart.length > 0;
+        saveBtn.disabled = !ready;
+        if (ready) saveBtn.textContent = 'Save';
+    }
+
+    // ── Save Sale (Supabase) ───────────────────────────────────────────
+    saveBtn.addEventListener('click', async () => {
+        if (cart.length === 0) { showToast('Add at least one item', 'error'); return; }
+
+        // Double-tap protection
+        saveBtn.disabled = true;
+        saveBtn.textContent = 'Saving...';
+
+        const customer = selectedCustomer || { name: 'Walk-in Customer', phone: 'N/A' };
+        const subtotal = cart.reduce((sum, item) => sum + item.product.price * item.quantity, 0);
+        const discountAmt = discountType === 'percent' ? subtotal * (discount / 100) : discount;
+        const total = subtotal - discountAmt + extraProfit + additional;
+        const shouldGenerateReceipt = document.getElementById('generateReceipt').checked;
+
+        let finalAmountPaid, balance, paymentStatus;
+        if (selectedPaymentMethod === 'not_paid') {
+            finalAmountPaid = 0; balance = total; paymentStatus = 'pending';
+        } else if (isPartialPayment) {
+            if (amountPaid <= 0) {
+                showToast('Enter amount paid for partial payment', 'error');
+                saveBtn.disabled = false; saveBtn.textContent = 'Save'; return;
+            }
+            if (amountPaid >= total) {
+                showToast('Amount paid cannot equal or exceed total', 'error');
+                saveBtn.disabled = false; saveBtn.textContent = 'Save'; return;
+            }
+            finalAmountPaid = amountPaid; balance = total - amountPaid; paymentStatus = 'partial';
+        } else {
+            finalAmountPaid = total; balance = 0; paymentStatus = 'paid';
+        }
+
+        document.getElementById('loading').classList.add('show');
+
+        try {
+            // Generate sale ID atomically (race-condition safe)
+            const { data: orderNumber, error: rpcErr } = await sb.rpc('get_next_order_number', { p_user_id: currentUser.id });
+            if (rpcErr) throw rpcErr;
+            const saleId = orderNumber;
+            const shareToken = crypto.randomUUID();
+
+            const saleData = {
+                user_id: currentUser.id,
+                order_number: saleId,
+                share_token: shareToken,
+                customer_name: customer.name,
+                customer_phone: customer.phone || 'N/A',
+                amount: total,
+                amount_paid: finalAmountPaid,
+                balance: balance,
+                status: paymentStatus,
+                payment_method: selectedPaymentMethod,
+                channel: selectedChannel,
+                items_count: cart.length,
+                items: cart,
+                discount: discountAmt,
+                discount_type: discountType,
+                extra_profit: extraProfit,
+                additional_charge: additional,
+                subtotal: subtotal,
+                notes: document.getElementById('notesInput').value.trim(),
+                sale_date: document.getElementById('saleDateInput').value || today,
+            };
+
+            const { error: saveError } = await sb
+                .from('sales')
+                .insert([saleData]);
+
+            if (saveError) throw saveError;
+
+            // Decrement stock for each sold item (atomic — rolls back if any fail)
+            const stockItems = cart.map(i => ({ id: i.product.id, quantity: i.quantity }));
+            const { error: stockErr } = await sb.rpc('decrement_stock', {
+                p_items: stockItems,
+                p_user_id: currentUser.id,
+            });
+            if (stockErr) console.warn('Stock update failed:', stockErr.message);
+
+            document.getElementById('loading').classList.remove('show');
+
+            if (shouldGenerateReceipt) {
+                showReceipt({ ...saleData, id: saleId, share_token: shareToken });
+            } else {
+                showToast('Sale saved successfully!', 'success');
+                setTimeout(() => window.location.href = returnTo, 1200);
+            }
+        } catch (err) {
+            console.error('Error saving sale:', err);
+            document.getElementById('loading').classList.remove('show');
+            saveBtn.disabled = false;
+            saveBtn.textContent = 'Save';
+            showToast('Error saving sale: ' + err.message, 'error');
+        }
+    });
+
+    // ── Invoice ────────────────────────────────────────────────────────
+    function statusBadge(s) {
+        const map = { paid: ['#D1FAE5','#059669','Paid'], partial: ['#DBEAFE','#2563EB','Partial'], pending: ['#FEF3C7','#D97706','Pending'], cancelled: ['#FEE2E2','#DC2626','Cancelled'] };
+        const [bg, col, label] = map[s] || ['#F3F4F6','#6B7280', s];
+        return `<span class="inv-status-badge" style="background:${bg};color:${col};">${label}</span>`;
+    }
+
+    function fmtMethod(m) {
+        return { cash:'Cash', transfer:'Transfer', pos:'POS', not_paid:'Not Paid' }[m] || m;
+    }
+
+    let currentInvoiceLink = '';
+
+    function showReceipt(sale) {
+        const b = businessData;
+        const saleDateVal = document.getElementById('saleDateInput').value;
+        const now = saleDateVal ? new Date(saleDateVal + 'T00:00:00') : new Date();
+        const dateStr = now.toLocaleDateString('en-NG', { day:'numeric', month:'long', year:'numeric' });
+        currentInvoiceLink = `https://app.methang.com/invoice.html?token=${sale.share_token}`;
+
+        const itemRows = sale.items.map(item => `
+            <tr>
+                <td class="item-name">${item.product.name}</td>
+                <td>₦${item.product.price.toLocaleString()}</td>
+                <td>${item.quantity}</td>
+                <td>₦${(item.quantity * item.product.price).toLocaleString()}</td>
+            </tr>
+        `).join('');
+
+        const hasBalance = sale.status === 'partial' || sale.status === 'pending';
+
+        document.getElementById('invoicePaper').innerHTML = `
+            ${b.logo_url ? `<img src="${b.logo_url}" alt="${b.name}" style="max-height:60px;max-width:160px;object-fit:contain;margin-bottom:12px;display:block;">` : ''}
+            <div class="inv-big-label">INVOICE</div>
+            <div class="inv-biz-name-main">${b.name}</div>
+
+            <div class="inv-info-card">
+                <div class="inv-bill-col">
+                    <div class="inv-card-label">Bill To</div>
+                    <div class="inv-card-name">${sale.customer_name}</div>
+                    ${sale.customer_phone && sale.customer_phone !== 'N/A' ? `<div class="inv-card-sub">${sale.customer_phone}</div>` : ''}
+                </div>
+                <div class="inv-meta-col">
+                    <div class="inv-meta-item">
+                        <div class="inv-card-label">Invoice Number</div>
+                        <div class="inv-meta-val">${sale.id}</div>
+                    </div>
+                    <div class="inv-meta-item">
+                        <div class="inv-card-label">Issued</div>
+                        <div class="inv-meta-val">${dateStr}</div>
+                    </div>
+                    <div class="inv-meta-item">
+                        <div class="inv-card-label">Status</div>
+                        ${statusBadge(sale.status)}
+                    </div>
+                </div>
+            </div>
+
+            <table class="inv-table">
+                <thead>
+                    <tr>
+                        <th>Item</th>
+                        <th style="text-align:right;">Price</th>
+                        <th style="text-align:center;">Qty</th>
+                        <th style="text-align:right;">Amount</th>
+                    </tr>
+                </thead>
+                <tbody>${itemRows}</tbody>
+            </table>
+
+            <div class="inv-totals">
+                <div class="inv-total-row"><span class="lbl">Subtotal</span><span class="val">₦${sale.subtotal.toLocaleString()}</span></div>
+                ${sale.discount > 0 ? `<div class="inv-total-row"><span class="lbl">Discount</span><span class="val" style="color:#DC2626;">-₦${sale.discount.toLocaleString()}</span></div>` : ''}
+                ${sale.additional_charge > 0 ? `<div class="inv-total-row"><span class="lbl">Additional</span><span class="val">+₦${sale.additional_charge.toLocaleString()}</span></div>` : ''}
+                <div class="inv-total-row"><span class="lbl">Total</span><span class="val">₦${sale.amount.toLocaleString()}</span></div>
+            </div>
+
+            <div class="inv-amount-due">
+                <span class="lbl">Amount due</span>
+                <span class="val">₦${hasBalance ? sale.balance.toLocaleString() : sale.amount.toLocaleString()}</span>
+            </div>
+
+            ${hasBalance ? `
+            <div class="inv-balance-box">
+                <div class="inv-balance-row">
+                    <span style="color:#92400E;font-weight:600;">Amount Paid</span>
+                    <span style="color:#059669;font-weight:700;">₦${sale.amount_paid.toLocaleString()}</span>
+                </div>
+                <div class="inv-balance-row">
+                    <span style="color:#7F1D1D;font-weight:600;">Balance Due</span>
+                    <span style="color:#DC2626;font-weight:700;">₦${sale.balance.toLocaleString()}</span>
+                </div>
+            </div>` : ''}
+
+            <div class="inv-total-row" style="margin-top:12px;">
+                <span class="lbl">Payment Method</span>
+                <span class="val">${fmtMethod(sale.payment_method)}</span>
+            </div>
+
+            <div class="inv-footer">
+                <div class="inv-footer-thanks">Thank you for your business!</div>
+                <div class="inv-footer-powered">Powered by Methang</div>
+            </div>
+        `;
+        document.getElementById('receiptModal').classList.add('show');
+        document.body.style.overflow = 'hidden';
+    }
+
+    function closeReceipt() {
+        document.getElementById('receiptModal').classList.remove('show');
+        document.getElementById('invoiceFull').classList.remove('show');
+        document.body.style.overflow = '';
+        window.location.href = returnTo;
+    }
+
+    function openFullInvoice() {
+        document.getElementById('invoicePaperFull').innerHTML = document.getElementById('invoicePaper').innerHTML;
+        document.getElementById('invoiceFull').classList.add('show');
+    }
+
+    function closeFullInvoice() {
+        document.getElementById('invoiceFull').classList.remove('show');
+    }
+
+    function shareWhatsApp() {
+        const msg = `Here is your invoice 🧾\n${currentInvoiceLink}`;
+        window.location.href = 'https://wa.me/?text=' + encodeURIComponent(msg);
+    }
+
+    function shareEmail() {
+        const subject = encodeURIComponent('Your Invoice – Methang');
+        const body = encodeURIComponent(`Hi,\n\nPlease find your invoice at the link below:\n\n${currentInvoiceLink}\n\nThank you for your business!`);
+        window.location.href = `mailto:?subject=${subject}&body=${body}`;
+    }
+
+    function shareSMS() {
+        const msg = `Your invoice: ${currentInvoiceLink}`;
+        window.location.href = 'sms:?body=' + encodeURIComponent(msg);
+    }
+
+    function sharePDF() {
+        // Use native share sheet (includes Save as PDF on iOS/Android)
+        if (navigator.share) {
+            navigator.share({ title: document.title, url: currentInvoiceLink }).catch(() => {});
+        } else {
+            window.print();
+        }
+    }
+
+    function shareNative() {
+        if (navigator.share) {
+            navigator.share({ title: 'Invoice – Methang', text: 'View your invoice here:', url: currentInvoiceLink }).catch(() => {});
+        } else {
+            navigator.clipboard?.writeText(currentInvoiceLink).then(() => {
+                showToast('Link copied to clipboard', 'success');
+            }).catch(() => showToast('Share not supported', ''));
+        }
+    }
+
+    // ── Auto-size currency inputs ──────────────────────────────────────
+    function sizeCurrencyInput(el) {
+        const len = Math.min(String(el.value || '0').length, 12);
+        el.style.width = Math.max(29, len * 9 + 4 + 11) + 'px';
+    }
+    ['extraProfitInput','additionalInput','amountPaidInput'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) sizeCurrencyInput(el);
+    });
+
+    // ── Discount expand/collapse ───────────────────────────────────────
+    function toggleDiscount() {
+        discountOpen = !discountOpen;
+        document.getElementById('discountExpand').classList.toggle('open', discountOpen);
+        document.getElementById('discountChevron').style.transform = discountOpen ? 'rotate(180deg)' : '';
+        if (discountOpen) setTimeout(() => document.getElementById('discountInput').focus(), 220);
+    }
+
+    function onDiscountInput(el) {
+        discount = parseFloat(el.value) || 0;
+        updateDiscountSummary();
+        updateSummary();
+    }
+
+    function updateDiscountSummary() {
+        const el = document.getElementById('discountSummary');
+        if (discountType === 'percent') {
+            el.textContent = discount > 0 ? `- ${discount}%` : '- 0%';
+        } else {
+            el.textContent = discount > 0 ? `- ₦${discount.toLocaleString()}` : '- ₦0';
+        }
+    }
+
+    // ── Toast ──────────────────────────────────────────────────────────
+    function showToast(msg, type = '') {
+        const t = document.getElementById('toast');
+        t.textContent = msg;
+        t.className = `toast ${type} show`;
+        setTimeout(() => { t.className = 'toast'; }, 2500);
+    }
+
+    // ── Init ───────────────────────────────────────────────────────────
+    loadData();
+</script>
+</body>
+</html>

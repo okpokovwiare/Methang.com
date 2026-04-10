@@ -1,0 +1,373 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <script>
+      if ("serviceWorker" in navigator) {
+        window.addEventListener("load", () => {
+          navigator.serviceWorker.register("/sw.js");
+        });
+      }
+    </script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Vendors - Methang</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Inter', sans-serif; background: #F3F4F6; color: #1A1A1A; padding: 16px 16px 100px; }
+        
+        .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+        .header-title { font-size: 18px; font-weight: 700; }
+        
+        .back-btn { width: 35px; height: 35px; border-radius: 50%; background: white; border: none; box-shadow: 0 2px 4px rgba(0,0,0,0.08); display: flex; align-items: center; justify-content: center; cursor: pointer; }
+        .back-btn svg { width: 20px; height: 20px; stroke: #1A1A1A; stroke-width: 2; fill: none; }
+        .back-btn:active { transform: scale(0.95); }
+        
+        .add-btn { position: fixed; bottom: 80px; right: 16px; width: 56px; height: 56px; border-radius: 50%; background: #0075FF; border: none; box-shadow: 0 4px 12px rgba(0,117,255,0.3); cursor: pointer; z-index: 10; display: flex; align-items: center; justify-content: center; }
+        .add-btn svg { width: 24px; height: 24px; stroke: white; stroke-width: 2; fill: none; }
+        .add-btn:active { transform: scale(0.95); }
+        
+        .search-box { background: white; border-radius: 12px; padding: 12px 16px; margin-bottom: 16px; display: flex; align-items: center; gap: 10px; box-shadow: 0 2px 4px rgba(0,0,0,0.04); }
+        .search-box input { border: none; outline: none; font-size: 14px; flex: 1; font-family: 'Inter', sans-serif; }
+        .search-icon { width: 20px; height: 20px; stroke: #6B7280; stroke-width: 2; fill: none; }
+        
+        .vendor-list { display: flex; flex-direction: column; gap: 12px; }
+        .vendor-card { background: white; border-radius: 16px; padding: 16px; box-shadow: 0 2px 8px rgba(0,0,0,0.04); cursor: pointer; display: flex; justify-content: space-between; align-items: center; }
+        .vendor-card:active { transform: scale(0.98); }
+        
+        .vendor-info { flex: 1; }
+        .vendor-name { font-size: 15px; font-weight: 700; color: #1A1A1A; margin-bottom: 4px; }
+        .vendor-count { font-size: 12px; color: #6B7280; }
+        
+        .vendor-icon { font-size: 32px; }
+        
+        .empty-state { text-align: center; padding: 60px 20px; }
+        .empty-icon { font-size: 64px; margin-bottom: 16px; opacity: 0.5; }
+        .empty-title { font-size: 16px; font-weight: 700; margin-bottom: 8px; }
+        .empty-text { font-size: 13px; color: #6B7280; }
+        
+        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 100; align-items: center; justify-content: center; padding: 20px; }
+        .modal.show { display: flex; }
+        .modal-content { background: white; border-radius: 20px; padding: 24px; width: 100%; max-width: 400px; }
+        .modal-title { font-size: 18px; font-weight: 700; margin-bottom: 20px; text-align: center; }
+        
+        .form-group { margin-bottom: 16px; }
+        .form-label { font-size: 13px; font-weight: 600; margin-bottom: 8px; display: block; }
+        .form-input { width: 100%; padding: 12px 16px; border: 2px solid #E5E7EB; border-radius: 12px; font-size: 14px; font-family: 'Inter', sans-serif; }
+        .form-input:focus { outline: none; border-color: #0075FF; }
+        
+        .modal-actions { display: flex; gap: 12px; margin-top: 24px; }
+        .btn { flex: 1; padding: 14px; border: none; border-radius: 12px; font-size: 14px; font-weight: 600; cursor: pointer; font-family: 'Inter', sans-serif; }
+        .btn-primary { background: #0075FF; color: white; }
+        .btn-primary:active { background: #0056CC; }
+        .btn-secondary { background: #F3F4F6; color: #1A1A1A; }
+        .btn-secondary:active { background: #E5E7EB; }
+        .btn-delete { background: #FEE2E2; color: #DC2626; }
+        .btn-delete:active { background: #FCA5A5; }
+        
+        /* Responsive styles */
+        @media (min-width: 640px) {
+            body { padding: 16px 24px 100px; max-width: 600px; margin: 0 auto; }
+        }
+        
+        @media (min-width: 1024px) {
+            body { max-width: 700px; }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <button class="back-btn" onclick="goBack()">
+            <svg viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"></polyline></svg>
+        </button>
+        <div class="header-title">Vendors</div>
+        <div style="width: 35px;"></div>
+    </div>
+
+    <div class="search-box">
+        <svg class="search-icon" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"></circle><path d="m21 21-4.35-4.35"></path></svg>
+        <input type="text" placeholder="Search vendors..." id="searchInput" oninput="searchVendors(this.value)">
+    </div>
+
+    <div class="vendor-list" id="vendorList"></div>
+
+    <div class="empty-state" id="emptyState" style="display: none;">
+        <div class="empty-icon">🏢</div>
+        <div class="empty-title">No Vendors Yet</div>
+        <div class="empty-text">Add your first vendor/supplier to track sources</div>
+    </div>
+
+    <button class="add-btn" onclick="openAddModal()">
+        <svg viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+    </button>
+
+    <!-- Add Vendor Modal -->
+    <div class="modal" id="addModal" onclick="if(event.target === this) closeAddModal()">
+        <div class="modal-content">
+            <div class="modal-title">Add Vendor</div>
+            <form id="addForm">
+                <div class="form-group">
+                    <label class="form-label">Vendor Name *</label>
+                    <input type="text" class="form-input" id="vendorName" required placeholder="e.g. Golden Grains Ltd">
+                </div>
+                <div class="modal-actions">
+                    <button type="button" class="btn btn-secondary" onclick="closeAddModal()">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Add Vendor</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Edit Vendor Modal -->
+    <div class="modal" id="editModal" onclick="if(event.target === this) closeEditModal()">
+        <div class="modal-content">
+            <div class="modal-title">Edit Vendor</div>
+            <form id="editForm">
+                <div class="form-group">
+                    <label class="form-label">Vendor Name *</label>
+                    <input type="text" class="form-input" id="editVendorName" required>
+                </div>
+                <div class="modal-actions" style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px;">
+                    <button type="button" class="btn btn-delete" onclick="deleteVendor()">Delete</button>
+                    <button type="button" class="btn btn-secondary" onclick="closeEditModal()">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Update</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        const sb = window.supabase.createClient(
+            'https://ufcpvbabgtftyfumzpnp.supabase.co',
+            'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVmY3B2YmFiZ3RmdHlmdW16cG5wIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ4ODEwMzcsImV4cCI6MjA5MDQ1NzAzN30.TzFJxnc8_ykXegNo2oMlN0xHXPkwHQcYNMAFMJorq5U'
+        );
+
+        let currentUser = null;
+        let allVendors = [];
+        let editingVendorId = null;
+        const referrer = document.referrer;
+
+        function goBack() {
+            if (referrer && (referrer.includes('add-item.html') || referrer.includes('edit-item.html'))) {
+                window.history.back();
+            } else {
+                window.location.href = 'items.html';
+            }
+        }
+
+        async function init() {
+            const { data: { user }, error } = await sb.auth.getUser();
+            if (error || !user) {
+                window.location.href = 'login.html';
+                return;
+            }
+            currentUser = user;
+            await loadVendors();
+        }
+
+        async function loadVendors() {
+            const { data, error } = await sb
+                .from('vendors')
+                .select('*')
+                .order('name');
+
+            if (error) {
+                console.error('Error loading vendors:', error);
+                return;
+            }
+
+            allVendors = data || [];
+            await displayVendors(allVendors);
+        }
+
+        async function getItemCount(vendorName) {
+            try {
+                const { count, error } = await sb
+                    .from('items')
+                    .select('*', { count: 'exact', head: true })
+                    .eq('vendor', vendorName);
+                if (error) throw error;
+                return count || 0;
+            } catch (err) {
+                console.error('Error counting items:', err);
+                return 0;
+            }
+        }
+
+        async function displayVendors(vendors) {
+            const container = document.getElementById('vendorList');
+            const emptyState = document.getElementById('emptyState');
+
+            if (vendors.length === 0) {
+                container.innerHTML = '';
+                emptyState.style.display = 'block';
+                return;
+            }
+
+            emptyState.style.display = 'none';
+
+            const withCounts = await Promise.all(
+                vendors.map(async (v) => ({
+                    ...v,
+                    itemCount: await getItemCount(v.name)
+                }))
+            );
+
+            container.innerHTML = withCounts.map(v => `
+                <div class="vendor-card" onclick="selectVendor('${v.id}', '${v.name.replace(/'/g, "\\'")}')">
+                    <div class="vendor-info">
+                        <div class="vendor-name">${v.name}</div>
+                        <div class="vendor-count">${v.itemCount} item${v.itemCount !== 1 ? 's' : ''}</div>
+                    </div>
+                    <div class="vendor-icon">🏢</div>
+                </div>
+            `).join('');
+        }
+
+        function selectVendor(id, name) {
+            if (referrer && (referrer.includes('add-item.html') || referrer.includes('edit-item.html'))) {
+                sessionStorage.setItem('selected_vendor', name);
+                window.location.href = referrer.includes('add-item.html') ? 'add-item.html' : 'edit-item.html';
+            } else {
+                openEditModal(id);
+            }
+        }
+
+        function searchVendors(query) {
+            const term = query.toLowerCase().trim();
+            if (!term) {
+                displayVendors(allVendors);
+                return;
+            }
+            displayVendors(allVendors.filter(v => v.name.toLowerCase().includes(term)));
+        }
+
+        function openAddModal() {
+            document.getElementById('addForm').reset();
+            document.getElementById('addModal').classList.add('show');
+        }
+
+        function closeAddModal() {
+            document.getElementById('addModal').classList.remove('show');
+        }
+
+        function openEditModal(id) {
+            const vendor = allVendors.find(v => v.id === id);
+            if (!vendor) return;
+            editingVendorId = id;
+            document.getElementById('editVendorName').value = vendor.name;
+            document.getElementById('editModal').classList.add('show');
+        }
+
+        function closeEditModal() {
+            document.getElementById('editModal').classList.remove('show');
+            editingVendorId = null;
+        }
+
+        document.getElementById('addForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const name = document.getElementById('vendorName').value.trim();
+
+            if (allVendors.some(v => v.name.toLowerCase() === name.toLowerCase())) {
+                alert('⚠️ This vendor already exists!');
+                return;
+            }
+
+            const submitBtn = e.target.querySelector('[type="submit"]');
+            submitBtn.disabled = true;
+
+            const { data, error } = await sb
+                .from('vendors')
+                .insert({ user_id: currentUser.id, name })
+                .select()
+                .single();
+
+            submitBtn.disabled = false;
+
+            if (error) {
+                console.error('Error adding vendor:', error);
+                alert('⚠️ Failed to add vendor. Please try again.');
+                return;
+            }
+
+            allVendors.push(data);
+            allVendors.sort((a, b) => a.name.localeCompare(b.name));
+            await displayVendors(allVendors);
+            closeAddModal();
+        });
+
+        document.getElementById('editForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const newName = document.getElementById('editVendorName').value.trim();
+            const vendor = allVendors.find(v => v.id === editingVendorId);
+            if (!vendor) return;
+
+            if (allVendors.some(v => v.id !== editingVendorId && v.name.toLowerCase() === newName.toLowerCase())) {
+                alert('⚠️ This vendor name already exists!');
+                return;
+            }
+
+            const submitBtn = e.target.querySelector('[type="submit"]');
+            submitBtn.disabled = true;
+
+            const oldName = vendor.name;
+
+            const { error: updateErr } = await sb
+                .from('vendors')
+                .update({ name: newName, updated_at: new Date().toISOString() })
+                .eq('id', editingVendorId);
+
+            if (updateErr) {
+                submitBtn.disabled = false;
+                console.error('Error updating vendor:', updateErr);
+                alert('⚠️ Failed to update vendor. Please try again.');
+                return;
+            }
+
+            if (oldName !== newName) {
+                await sb.from('items').update({ vendor: newName }).eq('vendor', oldName);
+            }
+
+            submitBtn.disabled = false;
+
+            const idx = allVendors.findIndex(v => v.id === editingVendorId);
+            allVendors[idx].name = newName;
+            allVendors.sort((a, b) => a.name.localeCompare(b.name));
+            await displayVendors(allVendors);
+            closeEditModal();
+        });
+
+        async function deleteVendor() {
+            const vendor = allVendors.find(v => v.id === editingVendorId);
+            if (!vendor) return;
+
+            const itemCount = await getItemCount(vendor.name);
+
+            if (itemCount > 0) {
+                if (!confirm(`⚠️ ${itemCount} item${itemCount !== 1 ? 's' : ''} use this vendor.\n\nDelete anyway? Items will have no vendor.`)) return;
+                await sb.from('items').update({ vendor: '' }).eq('vendor', vendor.name);
+            } else {
+                if (!confirm('Are you sure you want to delete this vendor?')) return;
+            }
+
+            const { error } = await sb
+                .from('vendors')
+                .delete()
+                .eq('id', editingVendorId);
+
+            if (error) {
+                console.error('Error deleting vendor:', error);
+                alert('⚠️ Failed to delete vendor. Please try again.');
+                return;
+            }
+
+            allVendors = allVendors.filter(v => v.id !== editingVendorId);
+            await displayVendors(allVendors);
+            closeEditModal();
+        }
+
+        init();
+    </script>
+</body>
+</html>

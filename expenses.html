@@ -1,0 +1,379 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <script>
+      if ("serviceWorker" in navigator) {
+        window.addEventListener("load", () => {
+          navigator.serviceWorker.register("/sw.js");
+        });
+      }
+    </script>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>Expenses – Methang</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Inter', sans-serif; background: #E5E7EB; color: #1A1A1A; min-height: 100vh; padding: 16px 16px 100px; }
+
+    /* HEADER */
+    .header { margin-bottom: 20px; text-align: center; }
+    .page-title { font-size: 20px; font-weight: 700; }
+
+    /* SUMMARY CARD */
+    .summary-card { background: #fff; border-radius: 16px; padding: 14px 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.04); margin-bottom: 16px; display: flex; align-items: center; }
+    .summary-text { flex: 1; min-width: 0; }
+    .summary-label { font-size: 11px; font-weight: 600; color: #6B7280; text-transform: uppercase; letter-spacing: 0.4px; margin-bottom: 4px; }
+    .summary-amount { font-size: 20px; font-weight: 800; color: #0075FF; }
+    .chart-wrap { flex: 0 0 90px; width: 90px; }
+    .chart-bars { display: flex; align-items: flex-end; justify-content: space-between; gap: 3px; height: 36px; margin-bottom: 4px; }
+    .chart-bar { flex: 1; border-radius: 3px 3px 0 0; background: #D1D5DB; min-height: 3px; transition: height 0.2s; }
+    .chart-bar.active { background: #0075FF; }
+    .chart-labels { display: flex; justify-content: space-between; font-size: 8px; color: #9CA3AF; }
+
+    /* FILTERS */
+    .filter-row { display: flex; align-items: center; gap: 8px; margin-bottom: 16px; justify-content: space-between; }
+    .filter-wrap { position: relative; }
+
+    .cat-btn { background: #0075FF; border: 1px solid #0075FF; border-radius: 16px; padding: 6px 10px; font-size: 13px; font-weight: 600; color: #fff; cursor: pointer; display: flex; align-items: center; gap: 4px; font-family: 'Inter', sans-serif; width: 55px; min-width: 55px; overflow: hidden; }
+    .cat-btn span { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .cat-btn svg { width: 12px; height: 12px; flex-shrink: 0; stroke: #fff; stroke-width: 2; fill: none; }
+
+    .search-wrap { position: relative; width: 180px; }
+    .search-wrap input { width: 180px; background: #fff; border: 1px solid #E5E7EB; border-radius: 16px; padding: 6px 12px 6px 32px; font-size: 13px; font-family: 'Inter', sans-serif; color: #1A1A1A; outline: none; }
+    .search-wrap input::placeholder { color: #9CA3AF; }
+    .search-wrap svg { position: absolute; left: 10px; top: 50%; transform: translateY(-50%); width: 16px; height: 16px; stroke: #9CA3AF; stroke-width: 2; fill: none; pointer-events: none; }
+
+    .period-btn { background: #E6F0FF; border: 1px solid #0075FF; border-radius: 16px; padding: 6px 10px; cursor: pointer; display: flex; align-items: center; gap: 4px; font-family: 'Inter', sans-serif; width: 48px; min-width: 48px; }
+    .period-btn svg { flex-shrink: 0; }
+
+    /* DROPDOWNS */
+    .dropdown { display: none; position: absolute; top: calc(100% + 4px); background: #fff; border: 1px solid #E5E7EB; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); z-index: 200; min-width: 160px; overflow: hidden; }
+    .dropdown.open { display: block; }
+    .dropdown.right { right: 0; min-width: 130px; }
+    .dropdown-item { padding: 10px 16px; font-size: 13px; font-weight: 500; color: #1A1A1A; cursor: pointer; }
+    .dropdown-item:hover { background: #F3F4F6; }
+    .dropdown-item.active { color: #0075FF; background: #E6F0FF; font-weight: 600; }
+
+    /* LIST */
+    .section-title { font-size: 14px; font-weight: 700; color: #1A1A1A; margin-bottom: 8px; }
+    .expense-list { display: flex; flex-direction: column; gap: 8px; }
+    .expense-card { background: #fff; border-radius: 16px; padding: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.04); display: flex; align-items: center; gap: 12px; }
+    .expense-card:active { transform: scale(0.98); }
+    .expense-icon { width: 44px; height: 44px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 20px; flex-shrink: 0; }
+    .expense-info { flex: 1; min-width: 0; }
+    .expense-name { font-size: 14px; font-weight: 600; color: #1A1A1A; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-bottom: 2px; }
+    .expense-meta { font-size: 11px; color: #6B7280; font-weight: 500; }
+    .expense-right { text-align: right; flex-shrink: 0; }
+    .expense-amount { font-size: 16px; font-weight: 700; color: #DC2626; margin-bottom: 2px; }
+    .expense-date { font-size: 12px; color: #6B7280; }
+    .delete-btn { width: 32px; height: 32px; border-radius: 12px; background: #FEE2E2; border: none; display: flex; align-items: center; justify-content: center; cursor: pointer; flex-shrink: 0; }
+    .delete-btn:active { background: #FECACA; }
+    .delete-btn svg { width: 16px; height: 16px; stroke: #DC2626; stroke-width: 2; fill: none; }
+
+    /* EMPTY */
+    .empty-state { text-align: center; padding: 48px 16px; display: none; }
+    .empty-state-icon { font-size: 48px; margin-bottom: 12px; }
+    .empty-state-title { font-size: 16px; font-weight: 700; color: #1A1A1A; margin-bottom: 6px; }
+    .empty-state-sub { font-size: 13px; color: #6B7280; }
+
+    /* LOADING */
+    .loading-spinner { width: 32px; height: 32px; border: 3px solid #E5E7EB; border-top-color: #0075FF; border-radius: 50%; animation: spin 0.8s linear infinite; margin: 0 auto 12px; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* FAB */
+    .fab { position: fixed; bottom: 90px; right: 20px; width: 56px; height: 56px; border-radius: 50%; background: #0075FF; border: none; display: flex; align-items: center; justify-content: center; cursor: pointer; box-shadow: 0 4px 12px rgba(0,117,255,0.3); z-index: 100; }
+    .fab:active { transform: scale(0.95); }
+    .fab svg { width: 24px; height: 24px; stroke: #fff; stroke-width: 2; fill: none; }
+
+    /* TOAST */
+    .toast { position: fixed; bottom: 110px; left: 50%; transform: translateX(-50%); background: #1A1A1A; color: #fff; padding: 10px 20px; border-radius: 12px; font-size: 13px; font-weight: 600; z-index: 999; opacity: 0; transition: opacity 0.3s; white-space: nowrap; pointer-events: none; }
+    .toast.show { opacity: 1; }
+
+    /* BOTTOM NAV */
+    .bottom-nav { position: fixed; bottom: 0; left: 0; width: 100%; background: white; border-top: 1px solid #E5E7EB; z-index: 100; padding-bottom: max(env(safe-area-inset-bottom), 12px); }
+    .nav-icons-row { display: flex; justify-content: space-around; padding: 8px 0; }
+    .nav-item { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 8px; cursor: pointer; }
+    .nav-icon { width: 22px; height: 22px; stroke: #9CA3AF; stroke-width: 2; fill: none; stroke-linecap: round; stroke-linejoin: round; }
+    .nav-label { font-size: 11px; color: #9CA3AF; font-weight: 500; }
+    .nav-item.active .nav-icon { stroke: #1A1A1A}
+    .nav-item.active .nav-label { color: #1A1A1A}
+  </style>
+</head>
+<body>
+
+  <div class="header">
+    <span class="page-title">Expenses</span>
+  </div>
+
+  <div class="summary-card">
+    <div class="summary-text">
+      <div class="summary-label" id="summary-label">This Month</div>
+      <div class="summary-amount" id="summary-total">₦0</div>
+    </div>
+    <div class="chart-wrap">
+      <div class="chart-bars" id="chart-bars"></div>
+      <div class="chart-labels" id="chart-labels"></div>
+    </div>
+  </div>
+
+  <div class="filter-row">
+    <div class="filter-wrap">
+      <button class="cat-btn" id="cat-btn" onclick="toggleDropdown('cat-dd','period-dd')">
+        <span id="cat-label">All</span>
+        <svg viewBox="0 0 12 8"><path d="M1 1L6 6L11 1" stroke-linecap="round"/></svg>
+      </button>
+      <div class="dropdown" id="cat-dd">
+        <div class="dropdown-item active" onclick="pickCat('All','All',this)">All</div>
+        <div class="dropdown-item" onclick="pickCat('Food & Drinks','Food',this)">🍔 Food & Drinks</div>
+        <div class="dropdown-item" onclick="pickCat('Transport','Transport',this)">🚗 Transport</div>
+        <div class="dropdown-item" onclick="pickCat('Utilities','Utilities',this)">💡 Utilities</div>
+        <div class="dropdown-item" onclick="pickCat('Salaries','Salaries',this)">👥 Salaries</div>
+        <div class="dropdown-item" onclick="pickCat('Rent','Rent',this)">🏠 Rent</div>
+        <div class="dropdown-item" onclick="pickCat('Marketing','Marketing',this)">📣 Marketing</div>
+        <div class="dropdown-item" onclick="pickCat('Supplies','Supplies',this)">📦 Supplies</div>
+        <div class="dropdown-item" onclick="pickCat('Other','Other',this)">🔖 Other</div>
+      </div>
+    </div>
+
+    <div class="search-wrap">
+      <input type="text" placeholder="Search..." id="search-input" oninput="applyFilters()"/>
+      <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+    </div>
+
+    <div class="filter-wrap">
+      <button class="period-btn" onclick="toggleDropdown('period-dd','cat-dd')">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#0075FF" stroke-width="2">
+          <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/>
+        </svg>
+        <svg width="12" height="12" viewBox="0 0 12 8" fill="none" stroke="#0075FF" stroke-width="2">
+          <path d="M1 1L6 6L11 1" stroke-linecap="round"/>
+        </svg>
+      </button>
+      <div class="dropdown right" id="period-dd">
+        <div class="dropdown-item" onclick="pickPeriod('All Time',this)">All Time</div>
+        <div class="dropdown-item active" onclick="pickPeriod('This Month',this)">This Month</div>
+        <div class="dropdown-item" onclick="pickPeriod('This Week',this)">This Week</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="section-title" id="section-title">All Expenses</div>
+  <div class="expense-list" id="expense-list">
+    <div style="text-align: center; padding: 48px 16px;">
+      <div class="loading-spinner"></div>
+      <div style="font-size: 13px; color: #6B7280;">Loading expenses...</div>
+    </div>
+  </div>
+  <div class="empty-state" id="empty-state">
+    <div class="empty-state-icon">💸</div>
+    <div class="empty-state-title">No expenses found</div>
+    <div class="empty-state-sub">Tap + to log your first expense</div>
+  </div>
+
+  <button class="fab" onclick="window.location.href='add-expense.html'">
+    <svg viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+  </button>
+
+  <div class="toast" id="toast"></div>
+
+  <nav class="bottom-nav">
+    <div class="nav-icons-row">
+      <div class="nav-item" onclick="window.location.href='home.html'">
+        <svg class="nav-icon" viewBox="0 0 24 24"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>
+        <div class="nav-label">Home</div>
+      </div>
+      <div class="nav-item" onclick="window.location.href='sales.html'">
+        <svg class="nav-icon" viewBox="0 0 24 24"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/></svg>
+        <div class="nav-label">Sales</div>
+      </div>
+      <div class="nav-item" onclick="window.location.href='items.html'">
+        <svg class="nav-icon" viewBox="0 0 24 24"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>
+        <div class="nav-label">Items</div>
+      </div>
+      <div class="nav-item active">
+        <svg class="nav-icon" viewBox="0 0 24 24"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>
+        <div class="nav-label">Expenses</div>
+      </div>
+      <div class="nav-item" onclick="window.location.href='reports.html'">
+        <svg class="nav-icon" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+        <div class="nav-label">Reports</div>
+      </div>
+    </div>
+  </nav>
+
+<script>
+  // ── Supabase ──────────────────────────────────────────────────────────
+  const SUPABASE_URL      = 'https://ufcpvbabgtftyfumzpnp.supabase.co';
+  const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVmY3B2YmFiZ3RmdHlmdW16cG5wIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ4ODEwMzcsImV4cCI6MjA5MDQ1NzAzN30.TzFJxnc8_ykXegNo2oMlN0xHXPkwHQcYNMAFMJorq5U';
+  const db = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+  let allExpenses   = [];
+  let activeCat     = 'All';
+  let activePeriod  = 'This Month';
+  let currentUserId = null;
+
+  // ── Auth ──────────────────────────────────────────────────────────────
+  async function checkAuth() {
+    const { data: { session }, error } = await db.auth.getSession();
+    if (error || !session) { window.location.href = 'login.html'; return; }
+    currentUserId = session.user.id;
+    await loadExpenses();
+  }
+
+  // ── Load from Supabase ────────────────────────────────────────────────
+  async function loadExpenses() {
+    const { data, error } = await db
+      .from('expenses')
+      .select('*')
+      .eq('user_id', currentUserId)
+      .order('date', { ascending: false });
+
+    if (error) {
+      console.error('Error loading expenses:', error);
+      showToast('Failed to load expenses');
+      document.getElementById('expense-list').innerHTML = '';
+      document.getElementById('empty-state').style.display = 'block';
+      return;
+    }
+
+    allExpenses = data || [];
+    applyFilters();
+  }
+
+  // ── Filters ───────────────────────────────────────────────────────────
+  function getFiltered() {
+    const search = document.getElementById('search-input').value.toLowerCase().trim();
+    const now = new Date();
+    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+    const weekStart  = new Date(now);
+    weekStart.setDate(now.getDate() - now.getDay());
+    weekStart.setHours(0, 0, 0, 0);
+
+    return allExpenses.filter(e => {
+      const d       = new Date(e.date + 'T00:00:00');
+      const catOk   = activeCat === 'All' || e.category === activeCat;
+      const periodOk = activePeriod === 'All Time'   ? true
+                     : activePeriod === 'This Month' ? d >= monthStart
+                     : d >= weekStart;
+      const searchOk = !search
+        || (e.description||'').toLowerCase().includes(search)
+        || (e.category||'').toLowerCase().includes(search)
+        || (e.note||'').toLowerCase().includes(search);
+      return catOk && periodOk && searchOk;
+    });
+  }
+
+  function applyFilters() {
+    const filtered = getFiltered();
+    renderList(filtered);
+    updateSummary(filtered);
+    drawSparkline(filtered);
+  }
+
+  // ── Sparkline ─────────────────────────────────────────────────────────
+  function drawSparkline(expenses) {
+    const barsEl   = document.getElementById('chart-bars');
+    const labelsEl = document.getElementById('chart-labels');
+    const today    = new Date();
+    const todayStr = today.toISOString().split('T')[0];
+    const days = [];
+    for (let i = 6; i >= 0; i--) {
+      const d = new Date(today); d.setDate(today.getDate() - i); days.push(d);
+    }
+    const sums = days.map(d => {
+      const ds = d.toISOString().split('T')[0];
+      return expenses.filter(e => e.date === ds).reduce((s, e) => s + Number(e.amount), 0);
+    });
+    const max = Math.max(...sums) || 1;
+    barsEl.innerHTML = days.map((d, i) => {
+      const isToday = d.toISOString().split('T')[0] === todayStr;
+      const pct = sums[i] > 0 ? Math.max(12, Math.round((sums[i] / max) * 100)) : 0;
+      return `<div class="chart-bar${isToday?' active':''}" style="${pct>0?`height:${pct}%`:'height:3px'}"></div>`;
+    }).join('');
+    labelsEl.innerHTML = '';
+  }
+
+  // ── Pickers ───────────────────────────────────────────────────────────
+  function pickCat(cat, label, el) {
+    activeCat = cat;
+    document.getElementById('cat-label').textContent = label;
+    document.querySelectorAll('#cat-dd .dropdown-item').forEach(i => i.classList.remove('active'));
+    el.classList.add('active');
+    document.getElementById('section-title').textContent = cat === 'All' ? 'All Expenses' : cat;
+    closeAll(); applyFilters();
+  }
+  function pickPeriod(p, el) {
+    activePeriod = p;
+    document.querySelectorAll('#period-dd .dropdown-item').forEach(i => i.classList.remove('active'));
+    el.classList.add('active');
+    closeAll(); applyFilters();
+  }
+  function toggleDropdown(openId, closeId) {
+    document.getElementById(closeId).classList.remove('open');
+    document.getElementById(openId).classList.toggle('open');
+  }
+  function closeAll() {
+    document.getElementById('cat-dd').classList.remove('open');
+    document.getElementById('period-dd').classList.remove('open');
+  }
+  document.addEventListener('click', e => { if (!e.target.closest('.filter-wrap')) closeAll(); });
+
+  // ── Render ────────────────────────────────────────────────────────────
+  function renderList(filtered) {
+    const list  = document.getElementById('expense-list');
+    const empty = document.getElementById('empty-state');
+    list.innerHTML = '';
+    if (!filtered.length) { empty.style.display = 'block'; return; }
+    empty.style.display = 'none';
+    filtered.forEach(e => list.appendChild(makeCard(e)));
+  }
+
+  function makeCard(e) {
+    const div = document.createElement('div');
+    div.className = 'expense-card';
+    div.innerHTML =
+      '<div class="expense-icon" style="background:' + catBg(e.category) + '">' + catEmoji(e.category) + '</div>' +
+      '<div class="expense-info">' +
+        '<div class="expense-name">' + (e.description || e.category) + '</div>' +
+        '<div class="expense-meta">' + (e.category||'') + (e.note ? ' · ' + e.note : '') + '</div>' +
+      '</div>' +
+      '<div class="expense-right">' +
+        '<div class="expense-amount">−₦' + fmt(e.amount) + '</div>' +
+        '<div class="expense-date">' + fmtDate(e.date) + '</div>' +
+      '</div>' +
+      '<button class="delete-btn" onclick="deleteExpense(\'' + e.id + '\')">' +
+        '<svg viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg>' +
+      '</button>';
+    return div;
+  }
+
+  function updateSummary(filtered) {
+    const total = filtered.reduce((s, e) => s + Number(e.amount), 0);
+    document.getElementById('summary-label').textContent = activePeriod;
+    document.getElementById('summary-total').textContent = '₦' + fmt(total);
+  }
+
+  // ── Delete ────────────────────────────────────────────────────────────
+  async function deleteExpense(id) {
+    if (!confirm('Delete this expense?')) return;
+    const { error } = await db.from('expenses').delete().eq('id', id).eq('user_id', currentUserId);
+    if (error) { showToast('Failed to delete'); return; }
+    allExpenses = allExpenses.filter(e => e.id !== id);
+    applyFilters();
+    showToast('Expense deleted');
+  }
+
+  // ── Helpers ───────────────────────────────────────────────────────────
+  function fmt(n) { return Number(n).toLocaleString('en-NG', { minimumFractionDigits: 0, maximumFractionDigits: 2 }); }
+  function fmtDate(s) { return new Date(s + 'T00:00:00').toLocaleDateString('en-NG', { day: 'numeric', month: 'short', year: 'numeric' }); }
+  function catEmoji(c) { return {'Food & Drinks':'🍔',Transport:'🚗',Utilities:'💡',Salaries:'👥',Rent:'🏠',Marketing:'📣',Supplies:'📦',Other:'🔖'}[c]||'🔖'; }
+  function catBg(c) { return {'Food & Drinks':'#FEF3C7',Transport:'#DBEAFE',Utilities:'#D1FAE5',Salaries:'#EDE9FE',Rent:'#FCE7F3',Marketing:'#FEE2E2',Supplies:'#E0F2FE',Other:'#F3F4F6'}[c]||'#F3F4F6'; }
+  function showToast(msg) { const t = document.getElementById('toast'); t.textContent = msg; t.classList.add('show'); setTimeout(() => t.classList.remove('show'), 2500); }
+
+  // ── Init ──────────────────────────────────────────────────────────────
+  checkAuth();
+</script>
+</body>
+</html>

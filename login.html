@@ -1,0 +1,1006 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <script>
+      if ("serviceWorker" in navigator) {
+        window.addEventListener("load", () => {
+          navigator.serviceWorker.register("/sw.js");
+        });
+      }
+    </script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Methang - Sign In</title>
+    <link rel="icon" href="favicon.ico">
+    <link rel="apple-touch-icon" href="apple-touch-icon.png">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+        html, body { width: 100%; height: 100%; overflow: hidden; }
+        body { font-family: 'Inter', sans-serif; background: white; visibility: hidden; }
+
+        /* ── SESSION GUARD — hides everything until session check completes ── */
+        #session-guard { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: white; z-index: 99999; display: flex; align-items: center; justify-content: center; }
+        #session-guard .sg-spinner { width: 36px; height: 36px; border: 3px solid #E5E7EB; border-top-color: #0075FF; border-radius: 50%; animation: spin 0.8s linear infinite; }
+
+        /* ── LOADING OVERLAY ── */
+        .loading { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.45); z-index: 9999; align-items: center; justify-content: center; }
+        .loading.show { display: flex; }
+        .spinner { width: 48px; height: 48px; border: 4px solid rgba(255,255,255,0.3); border-top-color: white; border-radius: 50%; animation: spin 0.8s linear infinite; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        /* ── ONBOARDING ── */
+        #screen-onboard { display: flex; flex-direction: column; height: 100vh; background: white; }
+
+        .slides-wrapper { flex: 1; overflow: hidden; width: 100%; position: relative; }
+        .slides-track { display: flex; height: 100%; width: 100%; }
+        .slide { min-width: 100%; width: 100%; flex-shrink: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 40px 32px 0; }
+        .slide-illustration { width: 240px; height: 240px; border-radius: 32px; display: flex; align-items: center; justify-content: center; margin-bottom: 28px; overflow: hidden; }
+        .slide-illustration svg { width: 120px; height: 120px; }
+        .slide-title { font-size: 20px; font-weight: 800; color: #1A1A1A; text-align: center; margin-bottom: 10px; line-height: 1.25; }
+        .slide-desc { font-size: 14px; color: #6B7280; text-align: center; line-height: 1.6; max-width: 280px; }
+
+        .dots { display: flex; justify-content: center; gap: 6px; padding: 20px 0 16px; }
+        .dot { width: 6px; height: 6px; border-radius: 50%; background: #E5E7EB; transition: width 0.3s, background 0.3s; }
+        .dot.active { width: 20px; border-radius: 4px; background: #0075FF; }
+
+        .onboard-btns { padding: 0 24px 40px; display: flex; flex-direction: column; gap: 10px; }
+        .btn { width: 100%; padding: 16px; border: none; border-radius: 16px; font-size: 16px; font-weight: 700; font-family: 'Inter', sans-serif; cursor: pointer; transition: transform 0.1s, opacity 0.2s; }
+        .btn:active { transform: scale(0.98); }
+        .btn-primary { background: #0075FF; color: white; }
+        .btn-secondary { background: #1A1A1A; color: white; }
+
+        /* ── AUTH SCREENS ── */
+        .auth-screen { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: white; flex-direction: column; overflow-y: auto; }
+        .auth-screen.active { display: flex; }
+
+        .auth-header { display: flex; align-items: center; justify-content: center; position: relative; padding: 18px 20px 14px; border-bottom: 1px solid #F3F4F6; flex-shrink: 0; }
+        .auth-header-title { font-size: 17px; font-weight: 700; color: #1A1A1A; }
+        .auth-close-btn { position: absolute; left: 16px; background: none; border: none; cursor: pointer; padding: 4px; display: flex; align-items: center; justify-content: center; }
+        .auth-close-btn svg { width: 22px; height: 22px; stroke: #1A1A1A; stroke-width: 2.2; fill: none; }
+
+        .auth-body { padding: 24px 20px 40px; flex: 1; }
+        .auth-subtitle { font-size: 14px; color: #6B7280; text-align: center; line-height: 1.6; margin-bottom: 24px; }
+
+        /* FORM */
+        .form-group { margin-bottom: 16px; }
+        .form-label { display: block; font-size: 14px; font-weight: 600; color: #1A1A1A; margin-bottom: 6px; }
+        .form-input { width: 100%; padding: 14px 16px; border: 1.5px solid #E5E7EB; border-radius: 12px; font-size: 15px; font-family: 'Inter', sans-serif; color: #1A1A1A; background: white; outline: none; transition: border-color 0.2s; }
+        .form-input:focus { border-color: #0075FF; }
+        .form-input.error-field { border-color: #F97316; }
+        .form-input::placeholder { color: #9CA3AF; }
+        .field-error { font-size: 12px; color: #F97316; margin-top: 5px; display: none; }
+        .field-error.show { display: block; }
+
+        /* GLOBAL ALERT */
+        .screen-alert { padding: 12px 14px; border-radius: 10px; margin-bottom: 16px; font-size: 13px; font-weight: 500; display: none; }
+        .screen-alert.show { display: block; }
+        .screen-alert.error { background: #FEE2E2; color: #DC2626; border: 1px solid #FCA5A5; }
+        .screen-alert.success { background: #EFF6FF; color: #0066E0; border: 1px solid #93C5FD; }
+
+        /* PHONE */
+        .phone-wrap { display: flex; border: 1.5px solid #E5E7EB; border-radius: 12px; overflow: visible; transition: border-color 0.2s; position: relative; }
+        .phone-wrap:focus-within { border-color: #0075FF; }
+        .phone-wrap.error-field { border-color: #F97316; }
+        .phone-prefix { display: flex; align-items: center; gap: 5px; padding: 14px 10px 14px 14px; background: white; border-right: 1.5px solid #E5E7EB; border-radius: 12px 0 0 12px; font-size: 14px; font-weight: 600; color: #1A1A1A; white-space: nowrap; cursor: pointer; user-select: none; }
+        .phone-prefix svg { width: 12px; height: 12px; stroke: #9CA3AF; stroke-width: 2.5; fill: none; transition: transform 0.2s; }
+        .phone-prefix.open svg { transform: rotate(180deg); }
+        .phone-number-input { flex: 1; padding: 14px 14px; border: none; outline: none; font-size: 15px; font-family: 'Inter', sans-serif; color: #1A1A1A; background: white; min-width: 0; border-radius: 0 12px 12px 0; }
+        .phone-number-input::placeholder { color: #9CA3AF; }
+        .country-dropdown { display: none; position: absolute; top: calc(100% + 6px); left: 0; background: white; border: 1.5px solid #E5E7EB; border-radius: 12px; box-shadow: 0 8px 24px rgba(0,0,0,0.12); z-index: 200; width: 250px; max-height: 260px; overflow-y: auto; }
+        .country-dropdown.open { display: block; }
+        .country-option { display: flex; align-items: center; gap: 10px; padding: 12px 14px; cursor: pointer; font-size: 14px; color: #1A1A1A; transition: background 0.15s; }
+        .country-option:hover { background: #F9FAFB; }
+        .country-option.selected { background: #EFF6FF; font-weight: 600; color: #0075FF; }
+        .country-option .c-name { flex: 1; }
+        .country-option .c-code { color: #6B7280; font-size: 13px; }
+
+        /* SELECT */
+        .select-wrap { position: relative; }
+        .form-select { width: 100%; padding: 14px 40px 14px 16px; border: 1.5px solid #E5E7EB; border-radius: 12px; font-size: 15px; font-family: 'Inter', sans-serif; color: #1A1A1A; background: white; outline: none; appearance: none; -webkit-appearance: none; cursor: pointer; transition: border-color 0.2s; }
+        .form-select:focus { border-color: #0075FF; }
+        .select-arrow { position: absolute; right: 14px; top: 50%; transform: translateY(-50%); pointer-events: none; }
+        .select-arrow svg { width: 16px; height: 16px; stroke: #6B7280; stroke-width: 2.5; fill: none; }
+
+        /* PASSWORD EYE */
+        .input-wrap { position: relative; }
+        .input-wrap .form-input { padding-right: 48px; }
+        .eye-btn { position: absolute; right: 14px; top: 50%; transform: translateY(-50%); background: none; border: none; cursor: pointer; padding: 4px; display: flex; }
+        .eye-btn svg { width: 20px; height: 20px; stroke: #6B7280; stroke-width: 2; fill: none; }
+
+        /* STRENGTH */
+        .strength-bar { height: 3px; background: #E5E7EB; border-radius: 4px; overflow: hidden; margin-top: 8px; margin-bottom: 4px; }
+        .strength-fill { height: 100%; border-radius: 4px; transition: width 0.3s, background 0.3s; width: 0%; }
+        .strength-label { font-size: 11px; font-weight: 500; color: #9CA3AF; }
+
+        /* FORGOT LINK */
+        .trouble-row { font-size: 13px; color: #6B7280; margin-top: 10px; }
+        .trouble-row a { color: #0075FF; font-weight: 600; text-decoration: none; cursor: pointer; }
+
+        /* SUBMIT BUTTON */
+        .submit-btn { width: 100%; padding: 16px; border: none; border-radius: 16px; font-size: 16px; font-weight: 700; font-family: 'Inter', sans-serif; cursor: pointer; background: #F3F4F6; color: #9CA3AF; margin-top: 24px; transition: background 0.2s, color 0.2s, transform 0.1s; }
+        .submit-btn.active { background: #0075FF; color: white; }
+        .submit-btn:active { transform: scale(0.98); }
+        .submit-btn:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
+
+        /* OR DIVIDER */
+        .or-divider { display: flex; align-items: center; gap: 12px; margin: 20px 0; color: #9CA3AF; font-size: 13px; }
+        .or-divider::before, .or-divider::after { content: ''; flex: 1; height: 1px; background: #E5E7EB; }
+
+        /* LINK ROW */
+        .link-row { text-align: center; font-size: 14px; font-weight: 600; color: #1A1A1A; }
+        .link-row a { color: #0075FF; font-weight: 700; text-decoration: none; cursor: pointer; }
+
+        /* OTP */
+        .otp-email-chip { display: block; text-align: center; font-size: 14px; font-weight: 600; color: #1A1A1A; background: #F3F4F6; border-radius: 10px; padding: 10px 16px; margin-bottom: 28px; }
+        .otp-wrap { display: flex; gap: 10px; justify-content: center; margin-bottom: 8px; }
+        .otp-input { width: 48px; height: 56px; border: 1.5px solid #E5E7EB; border-radius: 12px; font-size: 22px; font-weight: 700; font-family: 'Inter', sans-serif; color: #1A1A1A; text-align: center; outline: none; background: white; transition: border-color 0.2s; }
+        .otp-input:focus { border-color: #0075FF; }
+        .otp-input.filled { border-color: #0075FF; background: #EFF6FF; }
+        .resend-row { text-align: center; margin-top: 18px; font-size: 13px; color: #6B7280; }
+        .resend-row a { color: #0075FF; font-weight: 600; text-decoration: none; cursor: pointer; }
+    </style>
+</head>
+<body>
+
+<!-- Session guard: covers page until auth check completes, prevents flash of login UI -->
+<div id="session-guard"><div class="sg-spinner"></div></div>
+
+<div class="loading" id="loading"><div class="spinner"></div></div>
+
+<!-- ══════════════════════════════════════
+     SCREEN 0 — ONBOARDING SLIDES
+══════════════════════════════════════ -->
+<div id="screen-onboard">
+    <div class="slides-wrapper">
+        <div class="slides-track" id="slides-track">
+
+            <!-- SLIDE 1 -->
+            <div class="slide">
+                <div class="slide-illustration" style="background: linear-gradient(135deg, #EFF6FF 0%, #DBEAFE 100%);">
+                    <svg viewBox="0 0 120 120" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <rect x="28" y="8" width="64" height="100" rx="12" fill="white" stroke="#0075FF" stroke-width="3"/>
+                        <rect x="28" y="8" width="64" height="22" rx="12" fill="#0075FF"/>
+                        <rect x="28" y="20" width="64" height="10" fill="#0075FF"/>
+                        <rect x="36" y="36" width="48" height="18" rx="6" fill="#DBEAFE"/>
+                        <rect x="40" y="40" width="18" height="4" rx="2" fill="#93C5FD"/>
+                        <rect x="62" y="40" width="16" height="4" rx="2" fill="#0075FF"/>
+                        <rect x="36" y="60" width="48" height="18" rx="6" fill="#DCFCE7"/>
+                        <rect x="40" y="64" width="18" height="4" rx="2" fill="#6EE7B7"/>
+                        <rect x="62" y="64" width="16" height="4" rx="2" fill="#059669"/>
+                        <rect x="36" y="84" width="48" height="16" rx="6" fill="#FEF3C7"/>
+                        <rect x="40" y="88" width="18" height="4" rx="2" fill="#FCD34D"/>
+                        <rect x="62" y="88" width="16" height="4" rx="2" fill="#D97706"/>
+                        <rect x="52" y="104" width="16" height="3" rx="1.5" fill="#CBD5E1"/>
+                    </svg>
+                </div>
+                <div class="slide-title">Run Your Business<br>In One Place</div>
+                <div class="slide-desc">Manage your inventory, record sales, and track expenses effortlessly.</div>
+            </div>
+
+            <!-- SLIDE 2 -->
+            <div class="slide">
+                <div class="slide-illustration" style="background: linear-gradient(135deg, #F0FDF4 0%, #DCFCE7 100%);">
+                    <svg viewBox="0 0 120 120" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <rect x="18" y="10" width="72" height="90" rx="10" fill="white" stroke="#059669" stroke-width="3"/>
+                        <rect x="18" y="10" width="72" height="22" rx="10" fill="#059669"/>
+                        <rect x="18" y="22" width="72" height="10" fill="#059669"/>
+                        <rect x="26" y="16" width="28" height="5" rx="2.5" fill="rgba(255,255,255,0.5)"/>
+                        <rect x="26" y="40" width="52" height="4" rx="2" fill="#DCFCE7"/>
+                        <rect x="26" y="50" width="38" height="4" rx="2" fill="#DCFCE7"/>
+                        <rect x="26" y="60" width="44" height="4" rx="2" fill="#DCFCE7"/>
+                        <rect x="26" y="72" width="52" height="10" rx="5" fill="#059669"/>
+                        <circle cx="96" cy="88" r="18" fill="#059669"/>
+                        <path d="M90 88 L96 82 L102 88" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+                        <line x1="96" y1="82" x2="96" y2="95" stroke="white" stroke-width="2.5" stroke-linecap="round"/>
+                    </svg>
+                </div>
+                <div class="slide-title">Send Unlimited<br>Branded Invoices</div>
+                <div class="slide-desc">Create and share professional invoices with your business name anytime.</div>
+            </div>
+
+            <!-- SLIDE 3 -->
+            <div class="slide">
+                <div class="slide-illustration" style="background: linear-gradient(135deg, #F5F3FF 0%, #EDE9FE 100%);">
+                    <svg viewBox="0 0 120 120" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <circle cx="60" cy="52" r="32" fill="white" stroke="#7C3AED" stroke-width="3"/>
+                        <circle cx="60" cy="52" r="6" fill="#7C3AED"/>
+                        <circle cx="44" cy="44" r="4" fill="#A78BFA"/>
+                        <circle cx="76" cy="44" r="4" fill="#A78BFA"/>
+                        <circle cx="44" cy="60" r="4" fill="#A78BFA"/>
+                        <circle cx="76" cy="60" r="4" fill="#A78BFA"/>
+                        <circle cx="60" cy="36" r="4" fill="#C4B5FD"/>
+                        <circle cx="60" cy="68" r="4" fill="#C4B5FD"/>
+                        <line x1="54" y1="52" x2="48" y2="44" stroke="#C4B5FD" stroke-width="1.5"/>
+                        <line x1="66" y1="52" x2="72" y2="44" stroke="#C4B5FD" stroke-width="1.5"/>
+                        <line x1="54" y1="52" x2="48" y2="60" stroke="#C4B5FD" stroke-width="1.5"/>
+                        <line x1="66" y1="52" x2="72" y2="60" stroke="#C4B5FD" stroke-width="1.5"/>
+                        <line x1="60" y1="46" x2="60" y2="40" stroke="#C4B5FD" stroke-width="1.5"/>
+                        <line x1="60" y1="58" x2="60" y2="64" stroke="#C4B5FD" stroke-width="1.5"/>
+                        <rect x="20" y="90" width="80" height="22" rx="11" fill="#7C3AED"/>
+                        <rect x="28" y="97" width="50" height="4" rx="2" fill="rgba(255,255,255,0.6)"/>
+                        <rect x="28" y="104" width="32" height="4" rx="2" fill="rgba(255,255,255,0.4)"/>
+                        <path d="M18 30 L20 24 L22 30 L28 32 L22 34 L20 40 L18 34 L12 32 Z" fill="#A78BFA"/>
+                    </svg>
+                </div>
+                <div class="slide-title">Your AI Business<br>Assistant</div>
+                <div class="slide-desc">Get insights, answers, and help to grow your business smarter.</div>
+            </div>
+
+            <!-- SLIDE 4 -->
+            <div class="slide">
+                <div class="slide-illustration" style="background: linear-gradient(135deg, #FFF7ED 0%, #FFEDD5 100%);">
+                    <svg viewBox="0 0 120 120" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <rect x="8" y="50" width="72" height="42" rx="8" fill="white" stroke="#F59E0B" stroke-width="3"/>
+                        <rect x="80" y="62" width="32" height="30" rx="8" fill="white" stroke="#F59E0B" stroke-width="3"/>
+                        <rect x="85" y="67" width="18" height="12" rx="4" fill="#DBEAFE"/>
+                        <circle cx="28" cy="96" r="10" fill="white" stroke="#F59E0B" stroke-width="3"/>
+                        <circle cx="28" cy="96" r="4" fill="#F59E0B"/>
+                        <circle cx="88" cy="96" r="10" fill="white" stroke="#F59E0B" stroke-width="3"/>
+                        <circle cx="88" cy="96" r="4" fill="#F59E0B"/>
+                        <circle cx="44" cy="68" r="10" fill="#F59E0B"/>
+                        <path d="M44 60 C39 60 35 64 35 68 C35 74 44 82 44 82 C44 82 53 74 53 68 C53 64 49 60 44 60Z" fill="#F59E0B"/>
+                        <circle cx="44" cy="68" r="4" fill="white"/>
+                    </svg>
+                </div>
+                <div class="slide-title">Track Every<br>Shipment</div>
+                <div class="slide-desc">Stay on top of deliveries and know exactly where your orders are.</div>
+            </div>
+
+        </div>
+    </div>
+
+    <div class="dots" id="dots">
+        <div class="dot active"></div>
+        <div class="dot"></div>
+        <div class="dot"></div>
+        <div class="dot"></div>
+    </div>
+
+    <div class="onboard-btns">
+        <button class="btn btn-primary" onclick="showAuth('signup')">Sign Up</button>
+        <button class="btn btn-secondary" onclick="showAuth('login')">Log In</button>
+    </div>
+</div>
+
+
+<!-- ══════════════════════════════════════
+     SCREEN 1 — LOGIN
+══════════════════════════════════════ -->
+<div class="auth-screen" id="screen-login">
+    <div class="auth-header">
+        <button class="auth-close-btn" onclick="backToOnboard()">
+            <svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+        <span class="auth-header-title">Log In</span>
+    </div>
+    <div class="auth-body">
+        <div class="screen-alert" id="login-alert"></div>
+
+        <div class="form-group">
+            <label class="form-label">Email Address</label>
+            <input type="email" class="form-input" id="login-email" placeholder="youremail@example.com" autocomplete="username" oninput="checkLoginForm()">
+            <div class="field-error" id="login-email-err">Enter a valid email address</div>
+        </div>
+        <div class="form-group">
+            <label class="form-label">Password</label>
+            <div class="input-wrap">
+                <input type="password" class="form-input" id="login-pw" placeholder="Enter your Password" autocomplete="current-password" oninput="checkLoginForm()">
+                <button class="eye-btn" onclick="togglePw('login-pw',this)">
+                    <svg viewBox="0 0 24 24"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
+                </button>
+            </div>
+            <div class="trouble-row">Trouble logging in? <a onclick="showAuthScreen('screen-forgot')">Reset password</a></div>
+        </div>
+
+        <button class="submit-btn" id="login-btn" onclick="doLogin()">Log In</button>
+
+        <div class="or-divider">or</div>
+        <div class="link-row">No account yet? <a onclick="showAuthScreen('screen-signup')">Sign up</a></div>
+    </div>
+</div>
+
+
+<!-- ══════════════════════════════════════
+     SCREEN 2 — SIGN UP
+══════════════════════════════════════ -->
+<div class="auth-screen" id="screen-signup">
+    <div class="auth-header">
+        <button class="auth-close-btn" onclick="backToOnboard()">
+            <svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+        <span class="auth-header-title">Sign Up</span>
+    </div>
+    <div class="auth-body">
+        <p class="auth-subtitle">Enter the information below and create a password to secure your account</p>
+
+        <div class="screen-alert" id="signup-alert"></div>
+
+        <div class="form-group">
+            <label class="form-label">Full Name</label>
+            <input type="text" class="form-input" id="su-name" placeholder="John Doe" autocomplete="name" oninput="checkSignupForm()">
+            <div class="field-error" id="su-name-err">Full name can't be empty</div>
+        </div>
+        <div class="form-group">
+            <label class="form-label">Business Name</label>
+            <input type="text" class="form-input" id="su-biz" placeholder="My Business" oninput="checkSignupForm()">
+            <div class="field-error" id="su-biz-err">Business name can't be empty</div>
+        </div>
+        <div class="form-group">
+            <label class="form-label">Email Address</label>
+            <input type="email" class="form-input" id="su-email" placeholder="Enter your email" autocomplete="email" oninput="checkSignupForm()">
+            <div class="field-error" id="su-email-err">Enter a valid email address</div>
+        </div>
+        <div class="form-group">
+            <label class="form-label">Phone Number</label>
+            <div class="phone-wrap" id="su-phone-wrap">
+                <div class="phone-prefix" id="phone-prefix-btn" onclick="toggleCountryDropdown()">
+                    <span id="selected-flag">🇳🇬</span>
+                    <span id="selected-code">+234</span>
+                    <svg viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg>
+                </div>
+                <div class="country-dropdown" id="country-dropdown"></div>
+                <input type="tel" class="phone-number-input" id="su-phone" placeholder="Enter your phone number" autocomplete="tel" oninput="checkSignupForm()">
+            </div>
+            <div class="field-error" id="su-phone-err">Phone number can't be empty</div>
+        </div>
+        <div class="form-group">
+            <label class="form-label">Password</label>
+            <div class="input-wrap">
+                <input type="password" class="form-input" id="signup-pw" placeholder="Min 9 characters" autocomplete="new-password" oninput="checkStrength(this.value); checkSignupForm()">
+                <button class="eye-btn" onclick="togglePw('signup-pw',this)">
+                    <svg viewBox="0 0 24 24"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
+                </button>
+            </div>
+            <div class="strength-bar"><div class="strength-fill" id="strength-fill"></div></div>
+            <div class="strength-label" id="strength-label"></div>
+            <div class="field-error" id="su-pw-err">Password must be at least 9 characters</div>
+        </div>
+        <div class="form-group">
+            <label class="form-label">Referral Code <span style="color:#9CA3AF;font-weight:400">(Optional)</span></label>
+            <input type="text" class="form-input" id="su-ref" placeholder="Enter a referral code">
+        </div>
+
+        <button class="submit-btn" id="signup-btn" onclick="doSignup()">Continue</button>
+
+        <div class="or-divider">or</div>
+        <div class="link-row">Already got an account? <a onclick="showAuthScreen('screen-login')">Log In</a></div>
+    </div>
+</div>
+
+
+<!-- ══════════════════════════════════════
+     SCREEN 3 — OTP VERIFY
+══════════════════════════════════════ -->
+<div class="auth-screen" id="screen-otp">
+    <div class="auth-header">
+        <button class="auth-close-btn" onclick="showAuthScreen('screen-signup')">
+            <svg viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg>
+        </button>
+        <span class="auth-header-title">Verify Email</span>
+    </div>
+    <div class="auth-body">
+        <p class="auth-subtitle">We sent a 6-digit code to your email. Enter it below to verify your account.</p>
+
+        <div class="otp-email-chip" id="otp-email-display">you@example.com</div>
+
+        <div class="screen-alert" id="otp-alert"></div>
+
+        <div class="otp-wrap">
+            <input class="otp-input" type="text" inputmode="numeric" maxlength="1" oninput="otpInput(this,0)" onkeydown="otpBack(event,0)">
+            <input class="otp-input" type="text" inputmode="numeric" maxlength="1" oninput="otpInput(this,1)" onkeydown="otpBack(event,1)">
+            <input class="otp-input" type="text" inputmode="numeric" maxlength="1" oninput="otpInput(this,2)" onkeydown="otpBack(event,2)">
+            <input class="otp-input" type="text" inputmode="numeric" maxlength="1" oninput="otpInput(this,3)" onkeydown="otpBack(event,3)">
+            <input class="otp-input" type="text" inputmode="numeric" maxlength="1" oninput="otpInput(this,4)" onkeydown="otpBack(event,4)">
+            <input class="otp-input" type="text" inputmode="numeric" maxlength="1" oninput="otpInput(this,5)" onkeydown="otpBack(event,5)">
+        </div>
+
+        <button class="submit-btn active" id="otp-btn" onclick="doVerifyOtp()">Verify Account</button>
+
+        <div class="resend-row">
+            Didn't get it? <a id="resend-link" onclick="doResendOtp()">Resend code</a>
+            <span id="countdown" style="display:none; color:#9CA3AF">Resend in <span id="countdown-num">60</span>s</span>
+        </div>
+    </div>
+</div>
+
+
+<!-- ══════════════════════════════════════
+     SCREEN 4 — FORGOT PASSWORD
+══════════════════════════════════════ -->
+<div class="auth-screen" id="screen-forgot">
+    <div class="auth-header">
+        <button class="auth-close-btn" onclick="showAuthScreen('screen-login')">
+            <svg viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg>
+        </button>
+        <span class="auth-header-title">Reset Password</span>
+    </div>
+    <div class="auth-body">
+        <p class="auth-subtitle">Enter your email address and we'll send you a link to reset your password.</p>
+
+        <div class="screen-alert" id="forgot-alert"></div>
+
+        <div class="form-group">
+            <label class="form-label">Email Address</label>
+            <input type="email" class="form-input" id="forgot-email" placeholder="youremail@example.com" autocomplete="email" oninput="checkForgotForm()">
+        </div>
+
+        <button class="submit-btn" id="forgot-btn" onclick="doForgotPassword()">Send Reset Link</button>
+    </div>
+</div>
+
+
+<script>
+    // ══════════════════════════════════════
+    // SUPABASE INIT
+    // ══════════════════════════════════════
+    let sb;
+    function initSupabase() {
+        if (!window.supabase || !window.supabase.createClient) {
+            setTimeout(initSupabase, 100);
+            return;
+        }
+        sb = window.supabase.createClient(
+            'https://ufcpvbabgtftyfumzpnp.supabase.co',
+            'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVmY3B2YmFiZ3RmdHlmdW16cG5wIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ4ODEwMzcsImV4cCI6MjA5MDQ1NzAzN30.TzFJxnc8_ykXegNo2oMlN0xHXPkwHQcYNMAFMJorq5U'
+        );
+        checkExistingSession();
+    }
+    document.readyState === 'loading'
+        ? document.addEventListener('DOMContentLoaded', initSupabase)
+        : initSupabase();
+
+    async function checkExistingSession() {
+        if (!sb) { setTimeout(checkExistingSession, 100); return; }
+        const { data: { session } } = await sb.auth.getSession();
+        if (session) {
+            window.location.href = 'home.html';
+        } else {
+            // No session — reveal the page now
+            document.body.style.visibility = 'visible';
+            const guard = document.getElementById('session-guard');
+            if (guard) guard.remove();
+        }
+    }
+
+    // ══════════════════════════════════════
+    // LOADING
+    // ══════════════════════════════════════
+    function showLoading(show) {
+        document.getElementById('loading').classList.toggle('show', show);
+    }
+
+    function showAlert(id, msg, type = 'error') {
+        const el = document.getElementById(id);
+        el.textContent = msg;
+        el.className = `screen-alert show ${type}`;
+        if (type === 'error') setTimeout(() => el.classList.remove('show'), 5000);
+    }
+
+    function hideAlert(id) {
+        document.getElementById(id).classList.remove('show');
+    }
+
+    // ══════════════════════════════════════
+    // NAVIGATION
+    // ══════════════════════════════════════
+    function showAuth(screen) {
+        document.getElementById('screen-onboard').style.display = 'none';
+        document.querySelectorAll('.auth-screen').forEach(s => s.classList.remove('active'));
+        document.getElementById(screen === 'signup' ? 'screen-signup' : 'screen-login').classList.add('active');
+    }
+
+    function showAuthScreen(id) {
+        document.querySelectorAll('.auth-screen').forEach(s => s.classList.remove('active'));
+        document.getElementById(id).classList.add('active');
+    }
+
+    function backToOnboard() {
+        document.querySelectorAll('.auth-screen').forEach(s => s.classList.remove('active'));
+        document.getElementById('screen-onboard').style.display = 'flex';
+    }
+
+    // ══════════════════════════════════════
+    // ONBOARDING SLIDES
+    // ══════════════════════════════════════
+    let currentSlide = 0;
+    const totalSlides = 4;
+    const track = document.getElementById('slides-track');
+    const dotEls = document.querySelectorAll('.dot');
+
+    function goToSlide(n) {
+        currentSlide = n;
+        track.style.transform = `translateX(-${n * 100}%)`;
+        track.style.transition = 'transform 0.4s cubic-bezier(0.4,0,0.2,1)';
+        dotEls.forEach((d, i) => d.classList.toggle('active', i === n));
+    }
+
+    let startX = 0;
+    const wrapper = track.parentElement;
+    wrapper.addEventListener('touchstart', e => { startX = e.touches[0].clientX; }, { passive: true });
+    wrapper.addEventListener('touchend', e => {
+        const diff = startX - e.changedTouches[0].clientX;
+        if (Math.abs(diff) > 50) {
+            if (diff > 0 && currentSlide < totalSlides - 1) goToSlide(currentSlide + 1);
+            else if (diff < 0 && currentSlide > 0) goToSlide(currentSlide - 1);
+        }
+    });
+
+    let autoTimer = setInterval(() => {
+        goToSlide(currentSlide < totalSlides - 1 ? currentSlide + 1 : 0);
+    }, 3500);
+    wrapper.addEventListener('touchstart', () => clearInterval(autoTimer), { passive: true });
+
+    // ══════════════════════════════════════
+    // PASSWORD TOGGLE
+    // ══════════════════════════════════════
+    function togglePw(id, btn) {
+        const input = document.getElementById(id);
+        const hidden = input.type === 'password';
+        input.type = hidden ? 'text' : 'password';
+        btn.querySelector('svg').innerHTML = hidden
+            ? '<path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>'
+            : '<path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/>';
+    }
+
+    // ══════════════════════════════════════
+    // PASSWORD STRENGTH
+    // ══════════════════════════════════════
+    function checkStrength(pw) {
+        const fill = document.getElementById('strength-fill');
+        const label = document.getElementById('strength-label');
+        let score = 0;
+        if (pw.length >= 9) score++;
+        if (pw.length >= 12) score++;
+        if (/[A-Z]/.test(pw)) score++;
+        if (/[0-9]/.test(pw)) score++;
+        if (/[^A-Za-z0-9]/.test(pw)) score++;
+        const lvl = [
+            { w: '0%',   bg: '#E5E7EB', t: '' },
+            { w: '25%',  bg: '#DC2626', t: 'Weak' },
+            { w: '50%',  bg: '#F59E0B', t: 'Fair' },
+            { w: '75%',  bg: '#3B82F6', t: 'Good' },
+            { w: '100%', bg: '#0075FF', t: 'Strong' },
+        ][Math.min(score, 4)];
+        fill.style.width = lvl.w;
+        fill.style.background = lvl.bg;
+        label.textContent = lvl.t;
+        label.style.color = lvl.bg;
+    }
+
+    // ══════════════════════════════════════
+    // FORM VALIDATION
+    // ══════════════════════════════════════
+    function isValidEmail(e) { return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e); }
+
+    function checkLoginForm() {
+        const email = document.getElementById('login-email').value.trim();
+        const pw = document.getElementById('login-pw').value;
+        document.getElementById('login-btn').classList.toggle('active', isValidEmail(email) && pw.length >= 1);
+    }
+
+    function checkSignupForm() {
+        const name  = document.getElementById('su-name').value.trim();
+        const biz   = document.getElementById('su-biz').value.trim();
+        const email = document.getElementById('su-email').value.trim();
+        const phone = document.getElementById('su-phone').value.trim();
+        const pw    = document.getElementById('signup-pw').value;
+        const ready = name && biz && isValidEmail(email) && phone.length >= 7 && pw.length >= 9;
+        document.getElementById('signup-btn').classList.toggle('active', ready);
+    }
+
+    function checkForgotForm() {
+        const email = document.getElementById('forgot-email').value.trim();
+        document.getElementById('forgot-btn').classList.toggle('active', isValidEmail(email));
+    }
+
+    // ══════════════════════════════════════
+    // COUNTRY PICKER
+    // ══════════════════════════════════════
+    const countries = [
+        { flag:'🇳🇬', name:'Nigeria',                    code:'+234' },
+        { flag:'🇦🇫', name:'Afghanistan',                code:'+93'  },
+        { flag:'🇦🇱', name:'Albania',                    code:'+355' },
+        { flag:'🇩🇿', name:'Algeria',                    code:'+213' },
+        { flag:'🇦🇩', name:'Andorra',                    code:'+376' },
+        { flag:'🇦🇴', name:'Angola',                     code:'+244' },
+        { flag:'🇦🇬', name:'Antigua & Barbuda',          code:'+1268'},
+        { flag:'🇦🇷', name:'Argentina',                  code:'+54'  },
+        { flag:'🇦🇲', name:'Armenia',                    code:'+374' },
+        { flag:'🇦🇺', name:'Australia',                  code:'+61'  },
+        { flag:'🇦🇹', name:'Austria',                    code:'+43'  },
+        { flag:'🇦🇿', name:'Azerbaijan',                 code:'+994' },
+        { flag:'🇧🇸', name:'Bahamas',                    code:'+1242'},
+        { flag:'🇧🇭', name:'Bahrain',                    code:'+973' },
+        { flag:'🇧🇩', name:'Bangladesh',                 code:'+880' },
+        { flag:'🇧🇧', name:'Barbados',                   code:'+1246'},
+        { flag:'🇧🇾', name:'Belarus',                    code:'+375' },
+        { flag:'🇧🇪', name:'Belgium',                    code:'+32'  },
+        { flag:'🇧🇿', name:'Belize',                     code:'+501' },
+        { flag:'🇧🇯', name:'Benin',                      code:'+229' },
+        { flag:'🇧🇹', name:'Bhutan',                     code:'+975' },
+        { flag:'🇧🇴', name:'Bolivia',                    code:'+591' },
+        { flag:'🇧🇦', name:'Bosnia & Herzegovina',       code:'+387' },
+        { flag:'🇧🇼', name:'Botswana',                   code:'+267' },
+        { flag:'🇧🇷', name:'Brazil',                     code:'+55'  },
+        { flag:'🇧🇳', name:'Brunei',                     code:'+673' },
+        { flag:'🇧🇬', name:'Bulgaria',                   code:'+359' },
+        { flag:'🇧🇫', name:'Burkina Faso',               code:'+226' },
+        { flag:'🇧🇮', name:'Burundi',                    code:'+257' },
+        { flag:'🇨🇻', name:'Cabo Verde',                 code:'+238' },
+        { flag:'🇰🇭', name:'Cambodia',                   code:'+855' },
+        { flag:'🇨🇲', name:'Cameroon',                   code:'+237' },
+        { flag:'🇨🇦', name:'Canada',                     code:'+1'   },
+        { flag:'🇨🇫', name:'Central African Republic',   code:'+236' },
+        { flag:'🇹🇩', name:'Chad',                       code:'+235' },
+        { flag:'🇨🇱', name:'Chile',                      code:'+56'  },
+        { flag:'🇨🇳', name:'China',                      code:'+86'  },
+        { flag:'🇨🇴', name:'Colombia',                   code:'+57'  },
+        { flag:'🇰🇲', name:'Comoros',                    code:'+269' },
+        { flag:'🇨🇩', name:'Congo (DRC)',                code:'+243' },
+        { flag:'🇨🇬', name:'Congo (Republic)',           code:'+242' },
+        { flag:'🇨🇷', name:'Costa Rica',                 code:'+506' },
+        { flag:'🇨🇮', name:"Côte d'Ivoire",              code:'+225' },
+        { flag:'🇭🇷', name:'Croatia',                    code:'+385' },
+        { flag:'🇨🇺', name:'Cuba',                       code:'+53'  },
+        { flag:'🇨🇾', name:'Cyprus',                     code:'+357' },
+        { flag:'🇨🇿', name:'Czechia',                    code:'+420' },
+        { flag:'🇩🇰', name:'Denmark',                    code:'+45'  },
+        { flag:'🇩🇯', name:'Djibouti',                   code:'+253' },
+        { flag:'🇩🇴', name:'Dominican Republic',         code:'+1809'},
+        { flag:'🇪🇨', name:'Ecuador',                    code:'+593' },
+        { flag:'🇪🇬', name:'Egypt',                      code:'+20'  },
+        { flag:'🇸🇻', name:'El Salvador',                code:'+503' },
+        { flag:'🇬🇶', name:'Equatorial Guinea',          code:'+240' },
+        { flag:'🇪🇷', name:'Eritrea',                    code:'+291' },
+        { flag:'🇪🇪', name:'Estonia',                    code:'+372' },
+        { flag:'🇸🇿', name:'Eswatini',                   code:'+268' },
+        { flag:'🇪🇹', name:'Ethiopia',                   code:'+251' },
+        { flag:'🇫🇯', name:'Fiji',                       code:'+679' },
+        { flag:'🇫🇮', name:'Finland',                    code:'+358' },
+        { flag:'🇫🇷', name:'France',                     code:'+33'  },
+        { flag:'🇬🇦', name:'Gabon',                      code:'+241' },
+        { flag:'🇬🇲', name:'Gambia',                     code:'+220' },
+        { flag:'🇬🇪', name:'Georgia',                    code:'+995' },
+        { flag:'🇩🇪', name:'Germany',                    code:'+49'  },
+        { flag:'🇬🇭', name:'Ghana',                      code:'+233' },
+        { flag:'🇬🇷', name:'Greece',                     code:'+30'  },
+        { flag:'🇬🇩', name:'Grenada',                    code:'+1473'},
+        { flag:'🇬🇹', name:'Guatemala',                  code:'+502' },
+        { flag:'🇬🇳', name:'Guinea',                     code:'+224' },
+        { flag:'🇬🇼', name:'Guinea-Bissau',              code:'+245' },
+        { flag:'🇬🇾', name:'Guyana',                     code:'+592' },
+        { flag:'🇭🇹', name:'Haiti',                      code:'+509' },
+        { flag:'🇭🇳', name:'Honduras',                   code:'+504' },
+        { flag:'🇭🇺', name:'Hungary',                    code:'+36'  },
+        { flag:'🇮🇸', name:'Iceland',                    code:'+354' },
+        { flag:'🇮🇳', name:'India',                      code:'+91'  },
+        { flag:'🇮🇩', name:'Indonesia',                  code:'+62'  },
+        { flag:'🇮🇷', name:'Iran',                       code:'+98'  },
+        { flag:'🇮🇶', name:'Iraq',                       code:'+964' },
+        { flag:'🇮🇪', name:'Ireland',                    code:'+353' },
+        { flag:'🇮🇱', name:'Israel',                     code:'+972' },
+        { flag:'🇮🇹', name:'Italy',                      code:'+39'  },
+        { flag:'🇯🇲', name:'Jamaica',                    code:'+1876'},
+        { flag:'🇯🇵', name:'Japan',                      code:'+81'  },
+        { flag:'🇯🇴', name:'Jordan',                     code:'+962' },
+        { flag:'🇰🇿', name:'Kazakhstan',                 code:'+7'   },
+        { flag:'🇰🇪', name:'Kenya',                      code:'+254' },
+        { flag:'🇰🇼', name:'Kuwait',                     code:'+965' },
+        { flag:'🇰🇬', name:'Kyrgyzstan',                 code:'+996' },
+        { flag:'🇱🇦', name:'Laos',                       code:'+856' },
+        { flag:'🇱🇻', name:'Latvia',                     code:'+371' },
+        { flag:'🇱🇧', name:'Lebanon',                    code:'+961' },
+        { flag:'🇱🇸', name:'Lesotho',                    code:'+266' },
+        { flag:'🇱🇷', name:'Liberia',                    code:'+231' },
+        { flag:'🇱🇾', name:'Libya',                      code:'+218' },
+        { flag:'🇱🇮', name:'Liechtenstein',              code:'+423' },
+        { flag:'🇱🇹', name:'Lithuania',                  code:'+370' },
+        { flag:'🇱🇺', name:'Luxembourg',                 code:'+352' },
+        { flag:'🇲🇬', name:'Madagascar',                 code:'+261' },
+        { flag:'🇲🇼', name:'Malawi',                     code:'+265' },
+        { flag:'🇲🇾', name:'Malaysia',                   code:'+60'  },
+        { flag:'🇲🇻', name:'Maldives',                   code:'+960' },
+        { flag:'🇲🇱', name:'Mali',                       code:'+223' },
+        { flag:'🇲🇹', name:'Malta',                      code:'+356' },
+        { flag:'🇲🇷', name:'Mauritania',                 code:'+222' },
+        { flag:'🇲🇺', name:'Mauritius',                  code:'+230' },
+        { flag:'🇲🇽', name:'Mexico',                     code:'+52'  },
+        { flag:'🇲🇩', name:'Moldova',                    code:'+373' },
+        { flag:'🇲🇨', name:'Monaco',                     code:'+377' },
+        { flag:'🇲🇳', name:'Mongolia',                   code:'+976' },
+        { flag:'🇲🇪', name:'Montenegro',                 code:'+382' },
+        { flag:'🇲🇦', name:'Morocco',                    code:'+212' },
+        { flag:'🇲🇿', name:'Mozambique',                 code:'+258' },
+        { flag:'🇲🇲', name:'Myanmar',                    code:'+95'  },
+        { flag:'🇳🇦', name:'Namibia',                    code:'+264' },
+        { flag:'🇳🇵', name:'Nepal',                      code:'+977' },
+        { flag:'🇳🇱', name:'Netherlands',                code:'+31'  },
+        { flag:'🇳🇿', name:'New Zealand',                code:'+64'  },
+        { flag:'🇳🇮', name:'Nicaragua',                  code:'+505' },
+        { flag:'🇳🇪', name:'Niger',                      code:'+227' },
+        { flag:'🇲🇰', name:'North Macedonia',            code:'+389' },
+        { flag:'🇳🇴', name:'Norway',                     code:'+47'  },
+        { flag:'🇴🇲', name:'Oman',                       code:'+968' },
+        { flag:'🇵🇰', name:'Pakistan',                   code:'+92'  },
+        { flag:'🇵🇦', name:'Panama',                     code:'+507' },
+        { flag:'🇵🇬', name:'Papua New Guinea',           code:'+675' },
+        { flag:'🇵🇾', name:'Paraguay',                   code:'+595' },
+        { flag:'🇵🇪', name:'Peru',                       code:'+51'  },
+        { flag:'🇵🇭', name:'Philippines',                code:'+63'  },
+        { flag:'🇵🇱', name:'Poland',                     code:'+48'  },
+        { flag:'🇵🇹', name:'Portugal',                   code:'+351' },
+        { flag:'🇶🇦', name:'Qatar',                      code:'+974' },
+        { flag:'🇷🇴', name:'Romania',                    code:'+40'  },
+        { flag:'🇷🇺', name:'Russia',                     code:'+7'   },
+        { flag:'🇷🇼', name:'Rwanda',                     code:'+250' },
+        { flag:'🇸🇦', name:'Saudi Arabia',               code:'+966' },
+        { flag:'🇸🇳', name:'Senegal',                    code:'+221' },
+        { flag:'🇷🇸', name:'Serbia',                     code:'+381' },
+        { flag:'🇸🇱', name:'Sierra Leone',               code:'+232' },
+        { flag:'🇸🇬', name:'Singapore',                  code:'+65'  },
+        { flag:'🇸🇰', name:'Slovakia',                   code:'+421' },
+        { flag:'🇸🇮', name:'Slovenia',                   code:'+386' },
+        { flag:'🇸🇧', name:'Solomon Islands',            code:'+677' },
+        { flag:'🇸🇴', name:'Somalia',                    code:'+252' },
+        { flag:'🇿🇦', name:'South Africa',               code:'+27'  },
+        { flag:'🇸🇸', name:'South Sudan',                code:'+211' },
+        { flag:'🇪🇸', name:'Spain',                      code:'+34'  },
+        { flag:'🇱🇰', name:'Sri Lanka',                  code:'+94'  },
+        { flag:'🇸🇩', name:'Sudan',                      code:'+249' },
+        { flag:'🇸🇷', name:'Suriname',                   code:'+597' },
+        { flag:'🇸🇪', name:'Sweden',                     code:'+46'  },
+        { flag:'🇨🇭', name:'Switzerland',                code:'+41'  },
+        { flag:'🇸🇾', name:'Syria',                      code:'+963' },
+        { flag:'🇹🇼', name:'Taiwan',                     code:'+886' },
+        { flag:'🇹🇯', name:'Tajikistan',                 code:'+992' },
+        { flag:'🇹🇿', name:'Tanzania',                   code:'+255' },
+        { flag:'🇹🇭', name:'Thailand',                   code:'+66'  },
+        { flag:'🇹🇱', name:'Timor-Leste',                code:'+670' },
+        { flag:'🇹🇬', name:'Togo',                       code:'+228' },
+        { flag:'🇹🇹', name:'Trinidad & Tobago',          code:'+1868'},
+        { flag:'🇹🇳', name:'Tunisia',                    code:'+216' },
+        { flag:'🇹🇷', name:'Turkey',                     code:'+90'  },
+        { flag:'🇹🇲', name:'Turkmenistan',               code:'+993' },
+        { flag:'🇺🇬', name:'Uganda',                     code:'+256' },
+        { flag:'🇺🇦', name:'Ukraine',                    code:'+380' },
+        { flag:'🇦🇪', name:'United Arab Emirates',       code:'+971' },
+        { flag:'🇬🇧', name:'United Kingdom',             code:'+44'  },
+        { flag:'🇺🇸', name:'United States',              code:'+1'   },
+        { flag:'🇺🇾', name:'Uruguay',                    code:'+598' },
+        { flag:'🇺🇿', name:'Uzbekistan',                 code:'+998' },
+        { flag:'🇻🇺', name:'Vanuatu',                    code:'+678' },
+        { flag:'🇻🇪', name:'Venezuela',                  code:'+58'  },
+        { flag:'🇻🇳', name:'Vietnam',                    code:'+84'  },
+        { flag:'🇾🇪', name:'Yemen',                      code:'+967' },
+        { flag:'🇿🇲', name:'Zambia',                     code:'+260' },
+        { flag:'🇿🇼', name:'Zimbabwe',                   code:'+263' },
+    ];
+    let selectedCountryIdx = 0;
+
+    function buildCountryDropdown() {
+        const dd = document.getElementById('country-dropdown');
+        dd.innerHTML = countries.map((c, i) => `
+            <div class="country-option${i === selectedCountryIdx ? ' selected' : ''}" onclick="selectCountry(${i})">
+                <span>${c.flag}</span>
+                <span class="c-name">${c.name}</span>
+                <span class="c-code">${c.code}</span>
+            </div>`).join('');
+    }
+
+    function toggleCountryDropdown() {
+        const dd = document.getElementById('country-dropdown');
+        const btn = document.getElementById('phone-prefix-btn');
+        const isOpen = dd.classList.toggle('open');
+        btn.classList.toggle('open', isOpen);
+        if (isOpen) buildCountryDropdown();
+    }
+
+    function selectCountry(idx) {
+        selectedCountryIdx = idx;
+        const c = countries[idx];
+        document.getElementById('selected-flag').textContent = c.flag;
+        document.getElementById('selected-code').textContent = c.code;
+        document.getElementById('country-dropdown').classList.remove('open');
+        document.getElementById('phone-prefix-btn').classList.remove('open');
+    }
+
+    document.addEventListener('click', e => {
+        if (!e.target.closest('#su-phone-wrap')) {
+            document.getElementById('country-dropdown').classList.remove('open');
+            const btn = document.getElementById('phone-prefix-btn');
+            if (btn) btn.classList.remove('open');
+        }
+    });
+
+    // ══════════════════════════════════════
+    // OTP INPUTS
+    // ══════════════════════════════════════
+    const otpInputs = document.querySelectorAll('.otp-input');
+
+    function otpInput(el, i) {
+        el.value = el.value.replace(/\D/g, '').slice(-1);
+        el.classList.toggle('filled', el.value !== '');
+        if (el.value && i < 5) otpInputs[i + 1].focus();
+    }
+
+    function otpBack(e, i) {
+        if (e.key === 'Backspace' && !otpInputs[i].value && i > 0) {
+            otpInputs[i - 1].focus();
+            otpInputs[i - 1].value = '';
+            otpInputs[i - 1].classList.remove('filled');
+        }
+    }
+
+    function getOtpValue() {
+        return Array.from(otpInputs).map(i => i.value).join('');
+    }
+
+    function clearOtp() {
+        otpInputs.forEach(i => { i.value = ''; i.classList.remove('filled'); });
+    }
+
+    // ══════════════════════════════════════
+    // RESEND COUNTDOWN
+    // ══════════════════════════════════════
+    let countdownTimer;
+    function startCountdown() {
+        document.getElementById('resend-link').style.display = 'none';
+        const cd = document.getElementById('countdown');
+        const num = document.getElementById('countdown-num');
+        cd.style.display = 'inline';
+        let s = 60; num.textContent = s;
+        clearInterval(countdownTimer);
+        countdownTimer = setInterval(() => {
+            num.textContent = --s;
+            if (s <= 0) {
+                clearInterval(countdownTimer);
+                cd.style.display = 'none';
+                document.getElementById('resend-link').style.display = 'inline';
+            }
+        }, 1000);
+    }
+
+    // ══════════════════════════════════════
+    // TEMP SIGNUP DATA (for OTP screen)
+    // ══════════════════════════════════════
+    let pendingSignup = {};
+
+    // ══════════════════════════════════════
+    // AUTH ACTIONS
+    // ══════════════════════════════════════
+
+    // LOGIN
+    async function doLogin() {
+        const btn = document.getElementById('login-btn');
+        if (!btn.classList.contains('active')) return;
+        const email    = document.getElementById('login-email').value.trim();
+        const password = document.getElementById('login-pw').value;
+        hideAlert('login-alert');
+        showLoading(true);
+        btn.disabled = true;
+        try {
+            const { error } = await sb.auth.signInWithPassword({ email, password });
+            if (error) throw error;
+            window.location.href = 'home.html';
+        } catch (err) {
+            showAlert('login-alert', err.message, 'error');
+        } finally {
+            showLoading(false);
+            btn.disabled = false;
+        }
+    }
+
+    // SIGN UP
+    async function doSignup() {
+        const btn = document.getElementById('signup-btn');
+        if (!btn.classList.contains('active')) return;
+
+        const name     = document.getElementById('su-name').value.trim();
+        const business = document.getElementById('su-biz').value.trim();
+        const email    = document.getElementById('su-email').value.trim();
+        const phone    = document.getElementById('selected-code').textContent + document.getElementById('su-phone').value.trim();
+        const password = document.getElementById('signup-pw').value;
+
+        hideAlert('signup-alert');
+        showLoading(true);
+        btn.disabled = true;
+
+        try {
+            const { data, error } = await sb.auth.signUp({
+                email,
+                password,
+                options: { data: { name, business_name: business, phone } }
+            });
+            if (error) throw error;
+
+            // Store for after OTP
+            pendingSignup = { userId: data.user?.id, name, business, phone, email };
+
+            // Show OTP screen
+            document.getElementById('otp-email-display').textContent = email;
+            clearOtp();
+            showAuthScreen('screen-otp');
+            startCountdown();
+        } catch (err) {
+            showAlert('signup-alert', err.message, 'error');
+        } finally {
+            showLoading(false);
+            btn.disabled = false;
+        }
+    }
+
+    // VERIFY OTP
+    async function doVerifyOtp() {
+        const token = getOtpValue();
+        if (token.length < 6) {
+            showAlert('otp-alert', 'Please enter all 6 digits', 'error');
+            return;
+        }
+        const email = pendingSignup.email || document.getElementById('otp-email-display').textContent;
+        hideAlert('otp-alert');
+        showLoading(true);
+        document.getElementById('otp-btn').disabled = true;
+
+        try {
+            const { data, error } = await sb.auth.verifyOtp({ email, token, type: 'signup' });
+            if (error) throw error;
+
+            // Insert profile after verification
+            if (pendingSignup.name) {
+                await sb.from('profiles').upsert({
+                    id: data.user.id,
+                    name: pendingSignup.name,
+                    business_name: pendingSignup.business,
+                    phone: pendingSignup.phone,
+                    email: pendingSignup.email
+                });
+            }
+            window.location.href = 'home.html';
+        } catch (err) {
+            showAlert('otp-alert', err.message, 'error');
+        } finally {
+            showLoading(false);
+            document.getElementById('otp-btn').disabled = false;
+        }
+    }
+
+    // RESEND OTP
+    async function doResendOtp() {
+        const email = pendingSignup.email || document.getElementById('otp-email-display').textContent;
+        showLoading(true);
+        try {
+            const { error } = await sb.auth.resend({ type: 'signup', email });
+            if (error) throw error;
+            showAlert('otp-alert', 'Code resent! Check your inbox.', 'success');
+            startCountdown();
+        } catch (err) {
+            showAlert('otp-alert', err.message, 'error');
+        } finally {
+            showLoading(false);
+        }
+    }
+
+    // FORGOT PASSWORD
+    async function doForgotPassword() {
+        const btn = document.getElementById('forgot-btn');
+        if (!btn.classList.contains('active')) return;
+        const email = document.getElementById('forgot-email').value.trim();
+        hideAlert('forgot-alert');
+        showLoading(true);
+        btn.disabled = true;
+        try {
+            const { error } = await sb.auth.resetPasswordForEmail(email);
+            if (error) throw error;
+            showAlert('forgot-alert', 'Reset link sent! Check your inbox.', 'success');
+        } catch (err) {
+            showAlert('forgot-alert', err.message, 'error');
+        } finally {
+            showLoading(false);
+            btn.disabled = false;
+        }
+    }
+</script>
+</body>
+</html>

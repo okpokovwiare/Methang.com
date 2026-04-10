@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <script>
+      if ("serviceWorker" in navigator) {
+        window.addEventListener("load", () => {
+          navigator.serviceWorker.register("/sw.js");
+        });
+      }
+    </script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Select Items – Methang</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+        html { width: 100%; overflow-x: hidden; }
+        body { width: 100%; font-family: 'Inter', sans-serif; background: #F0F2F5; color: #1A1A1A; -webkit-font-smoothing: antialiased; }
+
+        /* HEADER */
+        .header { position: fixed; top: 0; left: 0; width: 100%; z-index: 100; background: #F0F2F5; padding: calc(16px + env(safe-area-inset-top)) 20px 12px; display: flex; align-items: center; justify-content: space-between; }
+        .header-btn { background: none; border: none; color: #0075FF; font-size: 16px; font-weight: 600; cursor: pointer; font-family: inherit; padding: 4px 0; min-width: 60px; }
+        .header-btn:active { opacity: 0.7; }
+        .header-btn.right { text-align: right; }
+        .header-title { font-size: 18px; font-weight: 700; }
+
+        /* SEARCH */
+        .search-bar { position: fixed; top: calc(57px + env(safe-area-inset-top)); left: 0; width: 100%; z-index: 99; background: #F0F2F5; padding: 0 16px 10px; }
+        .search-inner { position: relative; }
+        .search-icon { position: absolute; left: 13px; top: 50%; transform: translateY(-50%); pointer-events: none; color: #9CA3AF; }
+        .search-input { width: 100%; padding: 11px 14px 11px 38px; background: white; border: none; border-radius: 12px; font-size: 14px; font-family: inherit; outline: none; color: #1A1A1A; }
+        .search-input::placeholder { color: #9CA3AF; }
+
+        /* CONTENT */
+        .content { padding: calc(110px + env(safe-area-inset-top)) 16px calc(90px + env(safe-area-inset-bottom)); max-width: 600px; margin: 0 auto; }
+
+        /* SECTION LABEL */
+        .section-label { font-size: 12px; font-weight: 600; color: #9CA3AF; text-transform: uppercase; letter-spacing: 0.6px; padding: 0 4px; margin-bottom: 8px; }
+
+        /* ITEMS CARD */
+        .items-card { background: white; border-radius: 16px; overflow: hidden; }
+
+        /* ITEM ROW */
+        .item-row { display: flex; align-items: center; padding: 14px 16px; border-bottom: 1px solid #F0F2F5; gap: 14px; cursor: pointer; transition: background 0.12s; }
+        .item-row:last-child { border-bottom: none; }
+        .item-row.selected { background: #F0F6FF; }
+        .item-row:active { background: #F5F7FA; }
+        .item-row.selected:active { background: #E8F0FE; }
+
+        /* CHECKBOX */
+        .item-check { width: 24px; height: 24px; border-radius: 50%; border: 2px solid #D1D5DB; background: white; flex-shrink: 0; display: flex; align-items: center; justify-content: center; transition: border-color 0.15s, background 0.15s; }
+        .item-row.selected .item-check { border-color: #0075FF; background: #0075FF; }
+
+        /* ITEM INFO */
+        .item-info { flex: 1; min-width: 0; }
+        .item-name { font-size: 14px; font-weight: 600; color: #1A1A1A; margin-bottom: 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .item-price { font-size: 13px; font-weight: 500; color: #9CA3AF; }
+        .item-row.selected .item-price { color: #0075FF; }
+
+        /* EMPTY STATE */
+        .empty { padding: 48px 16px; text-align: center; color: #9CA3AF; font-size: 14px; }
+
+        /* FOOTER */
+        .footer { position: fixed; bottom: 0; left: 0; right: 0; background: white; border-top: 1px solid #F0F2F5; padding: 14px 16px calc(28px + env(safe-area-inset-bottom)); }
+        .confirm-btn { width: 100%; max-width: 600px; margin: 0 auto; display: block; padding: 15px; background: #0075FF; color: white; border: none; border-radius: 14px; font-size: 16px; font-weight: 700; font-family: inherit; cursor: pointer; }
+        .confirm-btn:disabled { background: #D1D5DB; cursor: default; }
+        .confirm-btn:not(:disabled):active { background: #0066E0; }
+    </style>
+</head>
+<body>
+
+    <div class="header">
+        <button class="header-btn" onclick="goBack()">Cancel</button>
+        <div class="header-title">Select Items</div>
+        <button class="header-btn right" onclick="goNewItem()">+ New</button>
+    </div>
+
+    <div class="search-bar">
+        <div class="search-inner">
+            <svg class="search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+            </svg>
+            <input type="text" class="search-input" id="searchInput" placeholder="Search items..." oninput="filterItems()" autocomplete="off">
+        </div>
+    </div>
+
+    <div class="content">
+        <div class="section-label">Products</div>
+        <div class="items-card" id="itemList"></div>
+    </div>
+
+    <div class="footer">
+        <button class="confirm-btn" id="confirmBtn" disabled onclick="confirmSelection()">Add Items</button>
+    </div>
+
+<script>
+    // ── Supabase ───────────────────────────────────────────────────────
+    const sb = supabase.createClient(
+        'https://ufcpvbabgtftyfumzpnp.supabase.co',
+        'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVmY3B2YmFiZ3RmdHlmdW16cG5wIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ4ODEwMzcsImV4cCI6MjA5MDQ1NzAzN30.TzFJxnc8_ykXegNo2oMlN0xHXPkwHQcYNMAFMJorq5U'
+    );
+    let currentUser = null;
+
+    const CHECK_SVG = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>`;
+
+    let allProducts = [];
+    let selected = new Set(); // productIds
+    let filteredProducts = [];
+
+    // ── Auth ───────────────────────────────────────────────────────────
+    async function checkAuth() {
+        const { data: { session } } = await sb.auth.getSession();
+        if (!session) { window.location.href = 'login.html'; return false; }
+        currentUser = session.user;
+        return true;
+    }
+
+    // ── Load products from Supabase ────────────────────────────────────
+    async function loadProducts() {
+        if (!await checkAuth()) return;
+        try {
+            const { data: products, error } = await sb
+                .from('items')
+                .select('id, name, price, stock')
+                .eq('user_id', currentUser.id)
+                .order('name');
+            if (error) throw error;
+            allProducts = (products || []).map(p => ({
+                id: p.id,
+                name: p.name,
+                price: p.price || 0,
+                stock: p.stock
+            }));
+            filteredProducts = [...allProducts];
+            renderList();
+        } catch (err) {
+            console.error('Error loading products:', err);
+            document.getElementById('itemList').innerHTML = '<div class="empty">Failed to load items</div>';
+        }
+    }
+
+    // ── Render ─────────────────────────────────────────────────────────
+    function renderList() {
+        const list = document.getElementById('itemList');
+        if (!filteredProducts.length) {
+            list.innerHTML = '<div class="empty">No items found</div>';
+            updateFooter();
+            return;
+        }
+        list.innerHTML = filteredProducts.map(p => {
+            const isSelected = selected.has(p.id);
+            return `
+            <div class="item-row${isSelected ? ' selected' : ''}" onclick="rowTap('${p.id}')">
+                <div class="item-check">${isSelected ? CHECK_SVG : ''}</div>
+                <div class="item-info">
+                    <div class="item-name">${p.name}</div>
+                    <div class="item-price">₦${p.price.toLocaleString()}</div>
+                </div>
+            </div>`;
+        }).join('');
+        updateFooter();
+    }
+
+    function updateFooter() {
+        const count = selected.size;
+        const btn = document.getElementById('confirmBtn');
+        btn.disabled = count === 0;
+        btn.textContent = count === 0 ? 'Add Items' : `Add ${count} Item${count !== 1 ? 's' : ''}`;
+    }
+
+    // ── Interactions ───────────────────────────────────────────────────
+    function rowTap(productId) {
+        if (selected.has(productId)) {
+            selected.delete(productId);
+        } else {
+            selected.add(productId);
+        }
+        renderList();
+    }
+
+    function filterItems() {
+        const term = document.getElementById('searchInput').value.trim().toLowerCase();
+        filteredProducts = allProducts.filter(p => p.name.toLowerCase().includes(term));
+        renderList();
+    }
+
+    // ── Confirm: add selected items (qty 1 each) into saved form state ─
+    function confirmSelection() {
+        const saved = localStorage.getItem('methang_form_state');
+        const state = saved ? JSON.parse(saved) : {};
+        const cart = state.cart || [];
+
+        selected.forEach(productId => {
+            const product = allProducts.find(p => p.id === productId);
+            if (!product) return;
+            const existing = cart.find(i => i.product.id === productId);
+            if (existing) {
+                existing.quantity += 1;
+            } else {
+                cart.push({ id: Date.now() + Math.random(), product, quantity: 1 });
+            }
+        });
+
+        state.cart = cart;
+        localStorage.setItem('methang_form_state', JSON.stringify(state));
+        localStorage.removeItem('methang_picking_items');
+        window.location.href = 'record-sale.html';
+    }
+
+    function goBack() {
+        localStorage.removeItem('methang_picking_items');
+        window.location.href = 'record-sale.html';
+    }
+
+    function goNewItem() {
+        window.location.href = 'add-item.html';
+    }
+
+    // ── Init ───────────────────────────────────────────────────────────
+    loadProducts();
+</script>
+</body>
+</html>

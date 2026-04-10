@@ -1,0 +1,503 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <script>
+      if ("serviceWorker" in navigator) {
+        window.addEventListener("load", () => {
+          navigator.serviceWorker.register("/sw.js");
+        });
+      }
+    </script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Edit Item - Methang</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Inter', sans-serif; background: #F3F4F6; color: #1A1A1A; }
+        
+        .header { position: sticky; top: 0; z-index: 100; background: #F3F4F6; display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; padding: 16px; }
+        .header-title { font-size: 18px; font-weight: 700; }
+        
+        .back-btn { width: 35px; height: 35px; border-radius: 50%; background: white; border: none; box-shadow: 0 2px 4px rgba(0,0,0,0.08); display: flex; align-items: center; justify-content: center; cursor: pointer; }
+        .back-btn svg { width: 20px; height: 20px; stroke: #1A1A1A; stroke-width: 2; fill: none; }
+        .back-btn:active { transform: scale(0.95); }
+        
+        .save-btn { background: none; border: none; color: #0075FF; font-size: 16px; font-weight: 600; cursor: pointer; padding: 8px 12px; }
+        .save-btn:active { opacity: 0.7; }
+        
+        .delete-btn { background: none; border: none; color: #DC2626; font-size: 16px; font-weight: 600; cursor: pointer; padding: 8px 12px; margin-left: auto; }
+        .delete-btn:active { opacity: 0.7; }
+        
+        .form-container { padding: 0 16px 40px; }
+        
+        .image-upload-section { background: white; border-radius: 16px; padding: 20px; margin-bottom: 16px; text-align: center; }
+        .image-preview { width: 100%; max-width: 300px; height: 250px; border-radius: 12px; border: 2px dashed #E5E7EB; margin: 0 auto 12px; display: flex; align-items: center; justify-content: center; flex-direction: column; gap: 12px; background: #F9FAFB; cursor: pointer; position: relative; }
+        .image-preview.has-image { border: none; background: none; }
+        .image-preview img { width: 100%; height: 100%; object-fit: cover; border-radius: 12px; }
+        .image-preview svg { width: 48px; height: 48px; stroke: #9CA3AF; stroke-width: 2; fill: none; }
+        .image-preview-text { font-size: 13px; font-weight: 500; color: #6B7280; }
+        .image-upload-section input[type="file"] { display: none; }
+        .remove-image-btn { position: absolute; top: 8px; right: 8px; width: 32px; height: 32px; border-radius: 50%; background: rgba(0,0,0,0.7); border: none; color: white; font-size: 18px; cursor: pointer; z-index: 10; }
+        .change-photo-btn { background: #F3F4F6; border: none; padding: 10px 20px; border-radius: 8px; font-size: 13px; font-weight: 600; color: #1A1A1A; cursor: pointer; font-family: 'Inter', sans-serif; }
+        .change-photo-btn:active { background: #E5E7EB; }
+        
+        .form-section { background: white; border-radius: 16px; padding: 20px; margin-bottom: 16px; }
+        .section-title { font-size: 14px; font-weight: 700; margin-bottom: 16px; color: #1A1A1A; }
+        
+        .form-group { margin-bottom: 16px; }
+        .form-group:last-child { margin-bottom: 0; }
+        .form-label { font-size: 13px; font-weight: 600; margin-bottom: 8px; display: block; color: #374151; }
+        .form-label .required { color: #DC2626; }
+        .form-input { width: 100%; padding: 12px 16px; border: 2px solid #E5E7EB; border-radius: 12px; font-size: 14px; font-family: 'Inter', sans-serif; background: white; }
+        .form-input:focus { outline: none; border-color: #0075FF; }
+        .form-input::placeholder { color: #9CA3AF; }
+        
+        textarea.form-input { resize: vertical; min-height: 80px; }
+        
+        .form-hint { font-size: 11px; color: #6B7280; margin-top: 6px; }
+        
+        .profit-display { background: #F9FAFB; border: 2px solid #E5E7EB; padding: 12px 16px; border-radius: 12px; display: flex; justify-content: space-between; align-items: center; }
+        .profit-label { font-size: 13px; color: #6B7280; font-weight: 500; }
+        .profit-value { font-size: 15px; font-weight: 700; color: #1A1A1A; }
+        .profit-value.positive { color: #059669; }
+        
+        .loading { text-align: center; padding: 60px 20px; }
+        .loading-spinner { width: 40px; height: 40px; border: 4px solid #E5E7EB; border-top-color: #0075FF; border-radius: 50%; animation: spin 1s linear infinite; margin: 0 auto 16px; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .loading-text { font-size: 14px; color: #6B7280; }
+        
+        @media (min-width: 640px) { body { max-width: 600px; margin: 0 auto; } }
+        @media (min-width: 1024px) { body { max-width: 700px; } }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <button class="back-btn" onclick="window.location.href='items.html'" id="backBtn">
+            <svg viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"></polyline></svg>
+        </button>
+        <div class="header-title">Edit Item</div>
+        <button class="save-btn" onclick="updateProduct()" type="button" id="saveBtn">Save</button>
+    </div>
+
+    <div id="loadingState" class="loading">
+        <div class="loading-spinner"></div>
+        <div class="loading-text">Loading item...</div>
+    </div>
+
+    <div id="productForm" class="form-container" style="display: none;">
+        <!-- Image Upload -->
+        <div class="image-upload-section">
+            <input type="file" id="productImage" accept="image/*" onchange="previewImage(event)">
+            <div id="imagePreview" class="image-preview" onclick="document.getElementById('productImage').click()">
+                <svg viewBox="0 0 24 24">
+                    <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                    <circle cx="8.5" cy="8.5" r="1.5"></circle>
+                    <polyline points="21 15 16 10 5 21"></polyline>
+                </svg>
+                <span class="image-preview-text">Add Item Photo</span>
+            </div>
+            <button type="button" class="change-photo-btn" onclick="document.getElementById('productImage').click()">Change Photo</button>
+        </div>
+
+        <!-- Basic Information -->
+        <div class="form-section">
+            <div class="section-title">Basic Information</div>
+            
+            <div class="form-group">
+                <label class="form-label">Item Name <span class="required">*</span></label>
+                <input type="text" class="form-input" id="productName" required placeholder="e.g. Rice (50kg bag)">
+            </div>
+            
+            <div class="form-group">
+                <label class="form-label">Item Category</label>
+                <div class="form-input" style="cursor: pointer; display: flex; align-items: center; justify-content: space-between; background: #F9FAFB;" onclick="window.location.href='item-categories.html'">
+                    <span id="categoryDisplay" style="color: #6B7280;">Choose a category or add new</span>
+                    <svg style="width: 20px; height: 20px; stroke: #6B7280; stroke-width: 2; fill: none;" viewBox="0 0 24 24">
+                        <polyline points="9 18 15 12 9 6"></polyline>
+                    </svg>
+                </div>
+                <input type="hidden" id="productCategory" value="">
+            </div>
+            
+            <div class="form-group">
+                <label class="form-label">Description</label>
+                <textarea class="form-input" id="productDescription" placeholder="Add product details, specifications, or notes..."></textarea>
+            </div>
+            
+            <div class="form-group">
+                <label class="form-label">Vendor/Supplier</label>
+                <div class="form-input" style="cursor: pointer; display: flex; align-items: center; justify-content: space-between; background: #F9FAFB;" onclick="window.location.href='vendors.html'">
+                    <span id="vendorDisplay" style="color: #6B7280;">Choose a vendor or add new</span>
+                    <svg style="width: 20px; height: 20px; stroke: #6B7280; stroke-width: 2; fill: none;" viewBox="0 0 24 24">
+                        <polyline points="9 18 15 12 9 6"></polyline>
+                    </svg>
+                </div>
+                <input type="hidden" id="productVendor" value="">
+            </div>
+        </div>
+
+        <!-- Pricing -->
+        <div class="form-section">
+            <div class="section-title">Pricing</div>
+            
+            <div class="form-group">
+                <label class="form-label">Cost Price <span class="required">*</span></label>
+                <input type="number" class="form-input" id="productCost" required placeholder="0" step="0.01" min="0" oninput="calculateProfit()">
+                <div class="form-hint">How much you paid for this item</div>
+            </div>
+            
+            <div class="form-group">
+                <label class="form-label">Selling Price <span class="required">*</span></label>
+                <input type="number" class="form-input" id="productPrice" required placeholder="0" step="0.01" min="0" oninput="calculateProfit()">
+                <div class="form-hint">Price you sell to customers</div>
+            </div>
+            
+            <div class="form-group">
+                <div class="profit-display">
+                    <span class="profit-label">Profit per Unit</span>
+                    <span class="profit-value" id="profitDisplay">₦0.00</span>
+                </div>
+            </div>
+            
+            <div class="form-group">
+                <div class="profit-display">
+                    <span class="profit-label">Profit Margin</span>
+                    <span class="profit-value" id="marginDisplay">0.0%</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Inventory -->
+        <div class="form-section">
+            <div class="section-title">Inventory</div>
+            
+            <div class="form-group">
+                <label class="form-label">Stock Quantity <span class="required">*</span></label>
+                <input type="number" class="form-input" id="productStock" required placeholder="0" min="0">
+                <div class="form-hint">Current number of units in stock</div>
+            </div>
+            
+            <div class="form-group">
+                <label class="form-label">Low Stock Alert</label>
+                <input type="number" class="form-input" id="productAlert" placeholder="10" min="0">
+                <div class="form-hint">Get notified when stock falls below this number</div>
+            </div>
+        </div>
+
+        <!-- Delete Button -->
+        <div class="form-section" style="text-align: center;">
+            <button type="button" onclick="deleteProduct()" style="display: inline-block; padding: 12px 24px; background: #FEE2E2; color: #DC2626; border: none; border-radius: 8px; font-weight: 600; font-family: 'Inter', sans-serif; cursor: pointer; font-size: 14px;">
+                Delete Item
+            </button>
+        </div>
+    </div>
+
+    <script>
+        // Supabase Configuration
+        const SUPABASE_URL = 'https://ufcpvbabgtftyfumzpnp.supabase.co';
+        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVmY3B2YmFiZ3RmdHlmdW16cG5wIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ4ODEwMzcsImV4cCI6MjA5MDQ1NzAzN30.TzFJxnc8_ykXegNo2oMlN0xHXPkwHQcYNMAFMJorq5U';
+        
+        let supabaseClient;
+        if (window.supabase && window.supabase.createClient) {
+            supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        } else {
+            alert('⚠️ Failed to initialize database connection. Please refresh the page.');
+        }
+
+        let currentProduct = null;
+        let currentImageFile = null;
+        let currentImagePreview = null;
+        let productId = null;
+
+        // Get product ID from URL
+        const urlParams = new URLSearchParams(window.location.search);
+        productId = urlParams.get('id');
+
+        if (!productId) {
+            alert('⚠️ No item ID provided');
+            window.location.href = 'items.html';
+        }
+
+        // Load product data
+        async function loadProduct() {
+            try {
+                if (!supabaseClient) {
+                    throw new Error('Database not initialized');
+                }
+
+                // Get current user
+                const { data: { user }, error: authError } = await supabaseClient.auth.getUser();
+                
+                if (authError || !user) {
+                    window.location.href = 'login.html';
+                    return;
+                }
+
+                // Fetch product
+                const { data, error } = await supabaseClient
+                    .from('items')
+                    .select('*')
+                    .eq('id', productId)
+                    .eq('user_id', user.id)
+                    .single();
+
+                if (error) throw error;
+                if (!data) {
+                    alert('⚠️ Item not found');
+                    window.location.href = 'items.html';
+                    return;
+                }
+
+                currentProduct = data;
+                populateForm(data);
+                document.getElementById('loadingState').style.display = 'none';
+                document.getElementById('productForm').style.display = 'block';
+
+            } catch (error) {
+                console.error('Error loading product:', error);
+                alert('⚠️ Failed to load item: ' + error.message);
+                window.location.href = 'items.html';
+            }
+        }
+
+        // Populate form with product data
+        function populateForm(product) {
+            document.getElementById('productName').value = product.name || '';
+            document.getElementById('productDescription').value = product.description || '';
+            document.getElementById('productCost').value = product.cost || '';
+            document.getElementById('productPrice').value = product.price || '';
+            document.getElementById('productStock').value = product.stock || '';
+            document.getElementById('productAlert').value = product.low_stock_alert || 10;
+            
+            // Set category
+            if (product.category) {
+                document.getElementById('productCategory').value = product.category;
+                document.getElementById('categoryDisplay').textContent = product.category;
+                document.getElementById('categoryDisplay').style.color = '#1A1A1A';
+            }
+            
+            // Set vendor
+            if (product.vendor) {
+                document.getElementById('productVendor').value = product.vendor;
+                document.getElementById('vendorDisplay').textContent = product.vendor;
+                document.getElementById('vendorDisplay').style.color = '#1A1A1A';
+            }
+            
+            // Set image if exists
+            if (product.image) {
+                const preview = document.getElementById('imagePreview');
+                preview.innerHTML = `
+                    <img src="${product.image}" alt="Product">
+                    <button type="button" class="remove-image-btn" onclick="removeImage(event)">×</button>
+                `;
+                preview.classList.add('has-image');
+                currentImagePreview = product.image;
+            }
+            
+            calculateProfit();
+        }
+
+        // Preview new image
+        function previewImage(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            if (file.size > 10 * 1024 * 1024) {
+                alert('⚠️ Image size must be less than 10MB');
+                event.target.value = '';
+                return;
+            }
+
+            currentImageFile = file;
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                currentImagePreview = e.target.result;
+                const preview = document.getElementById('imagePreview');
+                preview.innerHTML = `
+                    <img src="${currentImagePreview}" alt="Product">
+                    <button type="button" class="remove-image-btn" onclick="removeImage(event)">×</button>
+                `;
+                preview.classList.add('has-image');
+            };
+            reader.readAsDataURL(file);
+        }
+
+        // Remove image
+        function removeImage(event) {
+            event.stopPropagation();
+            currentImageFile = null;
+            currentImagePreview = null;
+            
+            const preview = document.getElementById('imagePreview');
+            preview.innerHTML = `
+                <svg viewBox="0 0 24 24">
+                    <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                    <circle cx="8.5" cy="8.5" r="1.5"></circle>
+                    <polyline points="21 15 16 10 5 21"></polyline>
+                </svg>
+                <span class="image-preview-text">Add Item Photo</span>
+            `;
+            preview.classList.remove('has-image');
+            document.getElementById('productImage').value = '';
+        }
+
+        // Upload image to Supabase Storage
+        async function uploadImage(file) {
+            if (!file) return null;
+
+            try {
+                const fileExt = file.name.split('.').pop();
+                const fileName = `${Date.now()}_${Math.random().toString(36).substring(7)}.${fileExt}`;
+                const filePath = `${fileName}`;
+
+                console.log('Uploading image:', fileName);
+
+                const { data, error } = await supabaseClient.storage
+                    .from('product-images')
+                    .upload(filePath, file, {
+                        cacheControl: '3600',
+                        upsert: false
+                    });
+
+                if (error) {
+                    console.error('Storage upload error:', error);
+                    throw new Error(`Image upload failed: ${error.message}`);
+                }
+
+                console.log('Upload successful:', data);
+
+                const { data: urlData } = supabaseClient.storage
+                    .from('product-images')
+                    .getPublicUrl(filePath);
+
+                console.log('Public URL:', urlData.publicUrl);
+
+                return urlData.publicUrl;
+            } catch (error) {
+                console.error('Error uploading image:', error);
+                alert('⚠️ Image upload failed: ' + error.message + '\n\nItem will be updated without new image.');
+                return null;
+            }
+        }
+
+        // Calculate profit and margin
+        function calculateProfit() {
+            const cost = parseFloat(document.getElementById('productCost').value) || 0;
+            const price = parseFloat(document.getElementById('productPrice').value) || 0;
+            
+            const profit = price - cost;
+            const margin = cost > 0 ? ((profit / cost) * 100) : 0;
+            
+            document.getElementById('profitDisplay').textContent = `₦${profit.toFixed(2)}`;
+            document.getElementById('marginDisplay').textContent = `${margin.toFixed(1)}%`;
+            
+            if (profit > 0) {
+                document.getElementById('profitDisplay').classList.add('positive');
+            } else {
+                document.getElementById('profitDisplay').classList.remove('positive');
+            }
+        }
+
+        // Update product
+        async function updateProduct() {
+            const productName = document.getElementById('productName').value.trim();
+            const productCost = document.getElementById('productCost').value;
+            const productPrice = document.getElementById('productPrice').value;
+            const productStock = document.getElementById('productStock').value;
+
+            if (!productName) {
+                alert('⚠️ Please enter item name');
+                return;
+            }
+
+            if (!productCost || !productPrice || !productStock) {
+                alert('⚠️ Please fill in all required fields');
+                return;
+            }
+
+            const saveBtn = document.getElementById('saveBtn');
+            const backBtn = document.getElementById('backBtn');
+            saveBtn.textContent = 'Updating...';
+            saveBtn.disabled = true;
+            backBtn.disabled = true;
+
+            try {
+                // Upload new image if selected
+                let imageUrl = currentProduct.image;
+                if (currentImageFile) {
+                    saveBtn.textContent = 'Uploading image...';
+                    const newImageUrl = await uploadImage(currentImageFile);
+                    if (newImageUrl) imageUrl = newImageUrl;
+                }
+
+                saveBtn.textContent = 'Saving...';
+
+                const categoryValue = document.getElementById('productCategory').value;
+                const vendorValue = document.getElementById('productVendor').value;
+
+                const updatedProduct = {
+                    name: productName,
+                    description: document.getElementById('productDescription').value.trim(),
+                    cost: parseFloat(productCost),
+                    price: parseFloat(productPrice),
+                    stock: parseInt(productStock),
+                    low_stock_alert: parseInt(document.getElementById('productAlert').value) || 10,
+                    updated_at: new Date().toISOString()
+                };
+
+                if (imageUrl) updatedProduct.image = imageUrl;
+                if (categoryValue) updatedProduct.category = categoryValue;
+                if (vendorValue) updatedProduct.vendor = vendorValue;
+
+                const { data, error } = await supabaseClient
+                    .from('items')
+                    .update(updatedProduct)
+                    .eq('id', productId)
+                    .select();
+
+                if (error) throw error;
+
+                alert('✅ Item updated successfully!');
+                window.location.href = 'items.html';
+
+            } catch (error) {
+                console.error('Error updating product:', error);
+                alert('⚠️ Failed to update item: ' + error.message);
+                
+                saveBtn.textContent = 'Save';
+                saveBtn.disabled = false;
+                backBtn.disabled = false;
+            }
+        }
+
+        // Delete product
+        async function deleteProduct() {
+            if (!confirm('⚠️ Are you sure you want to delete this item? This action cannot be undone.')) {
+                return;
+            }
+
+            try {
+                const { error } = await supabaseClient
+                    .from('items')
+                    .delete()
+                    .eq('id', productId);
+
+                if (error) throw error;
+
+                alert('✅ Item deleted successfully');
+                window.location.href = 'items.html';
+
+            } catch (error) {
+                console.error('Error deleting product:', error);
+                alert('⚠️ Failed to delete item: ' + error.message);
+            }
+        }
+
+        // Load product on page load
+        loadProduct();
+    </script>
+</body>
+</html>

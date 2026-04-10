@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <script>
+      if ("serviceWorker" in navigator) {
+        window.addEventListener("load", () => {
+          navigator.serviceWorker.register("/sw.js");
+        });
+      }
+    </script>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>Add Expense – Methang</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+    body { font-family: 'Inter', sans-serif; background: #E5E7EB; color: #1A1A1A; min-height: 100vh; padding: 16px 16px 32px; }
+
+    /* HEADER */
+    .header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; }
+    .header-btn { background: none; border: none; color: #0075FF; font-size: 16px; font-weight: 600; cursor: pointer; padding: 8px 4px; font-family: 'Inter', sans-serif; }
+    .header-btn:active { opacity: 0.7; }
+    .header-btn:disabled { opacity: 0.4; }
+    .page-title { font-size: 18px; font-weight: 700; }
+
+    /* AMOUNT HERO */
+    .amount-card { background: #1A1A1A; border-radius: 20px; padding: 24px 20px; margin-bottom: 16px; text-align: center; }
+    .amount-label { font-size: 13px; color: rgba(255,255,255,0.75); font-weight: 500; margin-bottom: 8px; }
+    .amount-input-wrap { display: flex; align-items: center; justify-content: center; gap: 4px; }
+    .amount-currency { font-size: 28px; font-weight: 700; color: white; }
+    .amount-input {
+      font-size: 40px; font-weight: 800; color: white; background: transparent;
+      border: none; outline: none; width: 180px; text-align: center;
+      font-family: 'Inter', sans-serif; caret-color: white;
+    }
+    .amount-input::placeholder { color: rgba(255,255,255,0.4); }
+
+    /* FORM CARD */
+    .form-card { background: #fff; border-radius: 16px; padding: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.04); margin-bottom: 16px; }
+
+    .form-group { margin-bottom: 18px; }
+    .form-group:last-child { margin-bottom: 0; }
+    .form-label { font-size: 13px; font-weight: 600; color: #374151; margin-bottom: 8px; display: block; }
+
+    .form-input, .form-select, .form-textarea {
+      width: 100%; padding: 12px 16px; border: 2px solid #E5E7EB; border-radius: 12px;
+      font-size: 14px; font-family: 'Inter', sans-serif; color: #1A1A1A; outline: none;
+      background: #F9FAFB; transition: border-color 0.2s, background 0.2s;
+      appearance: none; -webkit-appearance: none;
+    }
+    .form-input:focus, .form-select:focus, .form-textarea:focus {
+      border-color: #0075FF; background: #fff;
+    }
+    .form-textarea { resize: none; height: 80px; line-height: 1.5; }
+
+    /* Category grid */
+    .category-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+    .cat-chip {
+      display: flex; flex-direction: column; align-items: center; gap: 4px;
+      padding: 10px 4px; border-radius: 12px; border: 1.5px solid #E5E7EB;
+      background: #F9FAFB; cursor: pointer; transition: all 0.15s;
+    }
+    .cat-chip:active { transform: scale(0.96); }
+    .cat-chip.selected { border-color: #0075FF; background: #EFF6FF; }
+    .cat-chip .cat-emoji { font-size: 20px; }
+    .cat-chip .cat-name { font-size: 10px; font-weight: 600; color: #6B7280; text-align: center; line-height: 1.2; }
+    .cat-chip.selected .cat-name { color: #0075FF; }
+
+    /* Select wrapper */
+    .select-wrap { position: relative; }
+    .select-wrap svg { position: absolute; right: 14px; top: 50%; transform: translateY(-50%); pointer-events: none; width: 16px; height: 16px; stroke: #9CA3AF; stroke-width: 2; fill: none; }
+
+    /* Date row */
+    .date-shortcuts { display: flex; gap: 8px; margin-top: 10px; }
+    .date-chip { padding: 6px 12px; border-radius: 20px; border: 1.5px solid #E5E7EB; font-size: 12px; font-weight: 600; color: #6B7280; cursor: pointer; background: #F9FAFB; transition: all 0.15s; }
+    .date-chip:active { transform: scale(0.96); }
+    .date-chip.selected { border-color: #0075FF; background: #EFF6FF; color: #0075FF; }
+
+    /* TOAST */
+    .toast {
+      position: fixed; bottom: 110px; left: 50%; transform: translateX(-50%) translateY(20px);
+      background: #1A1A1A; color: white; padding: 12px 20px; border-radius: 12px;
+      font-size: 14px; font-weight: 500; opacity: 0; transition: all 0.3s;
+      pointer-events: none; white-space: nowrap; z-index: 999;
+    }
+    .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+    .toast.success { background: #059669; }
+    .toast.error { background: #DC2626; }
+
+  </style>
+</head>
+<body>
+
+  <!-- HEADER -->
+  <div class="header">
+    <button class="header-btn" id="cancelBtn" onclick="window.location.href='expenses.html'">Cancel</button>
+    <div class="page-title">Add Expense</div>
+    <button class="header-btn" id="saveBtn" onclick="saveExpense()">Save</button>
+  </div>
+
+  <!-- AMOUNT -->
+  <div class="amount-card">
+    <div class="amount-label">How much did you spend?</div>
+    <div class="amount-input-wrap">
+      <span class="amount-currency">₦</span>
+      <input type="number" class="amount-input" id="amount" placeholder="0" min="0" inputmode="decimal" />
+    </div>
+  </div>
+
+  <!-- FORM -->
+  <div class="form-card">
+
+    <!-- Category -->
+    <div class="form-group">
+      <label class="form-label">Category</label>
+      <div class="category-grid" id="categoryGrid">
+        <div class="cat-chip selected" data-cat="Food & Drinks" onclick="selectCat(this)">
+          <span class="cat-emoji">🍔</span>
+          <span class="cat-name">Food</span>
+        </div>
+        <div class="cat-chip" data-cat="Transport" onclick="selectCat(this)">
+          <span class="cat-emoji">🚗</span>
+          <span class="cat-name">Transport</span>
+        </div>
+        <div class="cat-chip" data-cat="Rent" onclick="selectCat(this)">
+          <span class="cat-emoji">🏠</span>
+          <span class="cat-name">Rent</span>
+        </div>
+        <div class="cat-chip" data-cat="Salaries" onclick="selectCat(this)">
+          <span class="cat-emoji">👥</span>
+          <span class="cat-name">Salaries</span>
+        </div>
+        <div class="cat-chip" data-cat="Utilities" onclick="selectCat(this)">
+          <span class="cat-emoji">💡</span>
+          <span class="cat-name">Utilities</span>
+        </div>
+        <div class="cat-chip" data-cat="Marketing" onclick="selectCat(this)">
+          <span class="cat-emoji">📣</span>
+          <span class="cat-name">Marketing</span>
+        </div>
+        <div class="cat-chip" data-cat="Supplies" onclick="selectCat(this)">
+          <span class="cat-emoji">📦</span>
+          <span class="cat-name">Supplies</span>
+        </div>
+        <div class="cat-chip" data-cat="Other" onclick="selectCat(this)">
+          <span class="cat-emoji">🔖</span>
+          <span class="cat-name">Other</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Description -->
+    <div class="form-group">
+      <label class="form-label">Description</label>
+      <input type="text" class="form-input" id="description" placeholder="e.g. Shop rent, Staff salary..." />
+    </div>
+
+    <!-- Date -->
+    <div class="form-group">
+      <label class="form-label">Date</label>
+      <input type="date" class="form-input" id="date" />
+      <div class="date-shortcuts">
+        <div class="date-chip selected" id="chip-today" onclick="setDate('today')">Today</div>
+        <div class="date-chip" id="chip-yesterday" onclick="setDate('yesterday')">Yesterday</div>
+        <div class="date-chip" id="chip-custom" onclick="focusDate()">Pick date</div>
+      </div>
+    </div>
+
+    <!-- Note -->
+    <div class="form-group">
+      <label class="form-label">Note <span style="color:#9CA3AF;font-weight:400">(optional)</span></label>
+      <textarea class="form-textarea" id="note" placeholder="Any extra details..."></textarea>
+    </div>
+
+  </div>
+
+  <!-- TOAST -->
+  <div class="toast" id="toast"></div>
+
+
+<script>
+  const SUPABASE_URL  = 'https://ufcpvbabgtftyfumzpnp.supabase.co';
+  const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVmY3B2YmFiZ3RmdHlmdW16cG5wIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ4ODEwMzcsImV4cCI6MjA5MDQ1NzAzN30.TzFJxnc8_ykXegNo2oMlN0xHXPkwHQcYNMAFMJorq5U';
+  const db = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+  let currentUserId = null;
+  let selectedCategory = 'Food & Drinks';
+
+  // ── Auth ──────────────────────────────────────────────────────────
+  async function checkAuth() {
+    const { data: { session } } = await db.auth.getSession();
+    if (!session) { window.location.href = 'login.html'; return; }
+    currentUserId = session.user.id;
+  }
+
+  // ── Category ──────────────────────────────────────────────────────
+  function selectCat(el) {
+    document.querySelectorAll('.cat-chip').forEach(c => c.classList.remove('selected'));
+    el.classList.add('selected');
+    selectedCategory = el.dataset.cat;
+  }
+
+  // ── Date shortcuts ────────────────────────────────────────────────
+  function todayStr() {
+    return new Date().toISOString().split('T')[0];
+  }
+  function yesterdayStr() {
+    const d = new Date(); d.setDate(d.getDate() - 1);
+    return d.toISOString().split('T')[0];
+  }
+
+  function setDate(type) {
+    const input = document.getElementById('date');
+    document.querySelectorAll('.date-chip').forEach(c => c.classList.remove('selected'));
+    if (type === 'today') {
+      input.value = todayStr();
+      document.getElementById('chip-today').classList.add('selected');
+    } else if (type === 'yesterday') {
+      input.value = yesterdayStr();
+      document.getElementById('chip-yesterday').classList.add('selected');
+    }
+  }
+
+  function focusDate() {
+    document.querySelectorAll('.date-chip').forEach(c => c.classList.remove('selected'));
+    document.getElementById('chip-custom').classList.add('selected');
+    document.getElementById('date').showPicker?.();
+    document.getElementById('date').focus();
+  }
+
+  // ── Toast ─────────────────────────────────────────────────────────
+  function showToast(msg, type = '') {
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.className = `toast ${type} show`;
+    setTimeout(() => { t.className = 'toast'; }, 3000);
+  }
+
+  // ── Save ──────────────────────────────────────────────────────────
+  async function saveExpense() {
+    const amount      = parseFloat(document.getElementById('amount').value);
+    const description = document.getElementById('description').value.trim();
+    const date        = document.getElementById('date').value;
+    const note        = document.getElementById('note').value.trim();
+
+    if (!amount || amount <= 0) { showToast('Enter a valid amount', 'error'); return; }
+    if (!description) { showToast('Add a description', 'error'); return; }
+    if (!date) { showToast('Select a date', 'error'); return; }
+    if (!currentUserId) { showToast('Not logged in', 'error'); return; }
+
+    const saveBtn   = document.getElementById('saveBtn');
+    const cancelBtn = document.getElementById('cancelBtn');
+    saveBtn.textContent = 'Saving...';
+    saveBtn.disabled  = true;
+    cancelBtn.disabled = true;
+
+    const { error } = await db.from('expenses').insert({
+      user_id:     currentUserId,
+      category:    selectedCategory,
+      description: description,
+      amount:      amount,
+      date:        date,
+      note:        note || null
+    });
+
+    if (error) {
+      console.error('Supabase error:', error);
+      showToast(error.message || 'Failed to save. Try again.', 'error');
+      saveBtn.textContent = 'Save';
+      saveBtn.disabled  = false;
+      cancelBtn.disabled = false;
+    } else {
+      showToast('Expense saved!', 'success');
+      setTimeout(() => { window.location.href = 'expenses.html'; }, 1200);
+    }
+  }
+
+  // ── Init ──────────────────────────────────────────────────────────
+  setDate('today');
+  checkAuth();
+</script>
+</body>
+</html>

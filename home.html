@@ -1,0 +1,1089 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <script>
+      if ("serviceWorker" in navigator) {
+        window.addEventListener("load", () => {
+          navigator.serviceWorker.register("/sw.js");
+        });
+      }
+    </script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Methang - Home</title>
+    <link rel="icon" href="favicon.ico">
+    <link rel="apple-touch-icon" href="apple-touch-icon.png">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+        html { width: 100%; overflow-x: hidden; }
+        body { width: 100%; min-width: 0; max-width: 100vw; overflow-x: hidden; font-family: 'Inter', sans-serif; background: #F0F2F5; color: #1A1A1A; -webkit-font-smoothing: antialiased; padding: 0 0 100px; }
+        
+        .content { width: 100%; max-width: 100%; padding: 0 16px 16px; overflow-x: hidden; }
+        .welcome { position: fixed; top: 0; left: 0; right: 0; display: flex; justify-content: space-between; align-items: center; background: #F0F2F5; padding: 16px; z-index: 50; }
+        .content { padding-top: 88px; }
+        .welcome-title { font-size: 20px; font-weight: 700; margin-bottom: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: calc(100vw - 80px); }
+        .profile-btn { width: 35px; height: 35px; border-radius: 50%; background: transparent; border: none; display: flex; align-items: center; justify-content: center; cursor: pointer; flex-shrink: 0; }
+
+        .card { background: white; border-radius: 16px; padding: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.04); }
+        
+        .bottom-nav {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            background: white;
+            border-top: 1px solid #E5E7EB;
+            z-index: 100;
+            padding-bottom: max(env(safe-area-inset-bottom), 12px);
+        }
+        
+        
+        .nav-icons-row {
+            display: flex;
+            justify-content: space-around;
+            padding: 8px 0;
+        }
+        
+        .nav-item { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 8px; cursor: pointer; }
+        .nav-icon-filled { width: 26px; height: 26px; fill: #0075FF; display: none; }
+        .nav-icon-outline { width: 26px; height: 26px; fill: none; stroke: #1A1A1A; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; display: block; }
+        .nav-label { font-size: 11px; color: #1A1A1A; font-weight: 500; }
+        .nav-item.active .nav-icon-filled { display: block; }
+        .nav-item.active .nav-icon-outline { display: none; }
+        .nav-item.active .nav-label { color: #0075FF; }
+
+        /* Mini AI Orb nav */
+        .ai-orb-nav { position: relative; width: 26px; height: 26px; display: block; }
+        .ai-orb-nav::before { content: ''; position: absolute; inset: -4px; border-radius: 50%; background: radial-gradient(circle, rgba(160,130,255,0.3) 0%, transparent 70%); animation: orbAmbient 5s ease-in-out infinite; pointer-events: none; }
+        .ai-orb-shell { width: 26px; height: 26px; border-radius: 50%; overflow: hidden; background: white; box-shadow: 0 0 10px rgba(160,130,255,0.3), inset 0 0 6px rgba(255,255,255,0.6); position: relative; }
+        .ai-orb-blobs { position: absolute; inset: 0; filter: blur(4px) saturate(1.4); }
+        .ai-orb-blob { position: absolute; border-radius: 50%; mix-blend-mode: multiply; }
+        .ai-orb-blob-1 { width: 22px; height: 22px; top: -4px; left: -4px; background: radial-gradient(circle, #B8D4FF, #A0B8FF); animation: orbMove1 18s ease-in-out infinite, orbColor1 14s ease-in-out infinite; }
+        .ai-orb-blob-2 { width: 18px; height: 18px; top: 10px; left: 12px; background: radial-gradient(circle, #E0B0FF, #C89AFF); animation: orbMove2 22s ease-in-out infinite, orbColor2 18s ease-in-out infinite; }
+        .ai-orb-blob-3 { width: 16px; height: 16px; top: 14px; left: -2px; background: radial-gradient(circle, #FFB8D8, #FFAACC); animation: orbMove3 16s ease-in-out infinite; }
+        .ai-orb-blob-4 { width: 14px; height: 14px; top: -2px; left: 14px; background: radial-gradient(circle, #A8E4FF, #90D0FF); animation: orbMove4 24s ease-in-out infinite; }
+        .ai-orb-gloss { position: absolute; inset: 0; border-radius: 50%; background: radial-gradient(ellipse 55% 40% at 36% 28%, rgba(255,255,255,0.75) 0%, transparent 100%); }
+        @keyframes orbAmbient { 0%,100%{opacity:0.8;} 50%{opacity:1;} }
+        @keyframes orbMove1 { 0%{transform:translate(0,0) scale(1);} 25%{transform:translate(4px,3px) scale(1.08);} 50%{transform:translate(2px,6px) scale(0.95);} 75%{transform:translate(-3px,2px) scale(1.05);} 100%{transform:translate(0,0) scale(1);} }
+        @keyframes orbMove2 { 0%{transform:translate(0,0);} 30%{transform:translate(-4px,-3px);} 65%{transform:translate(3px,-4px);} 100%{transform:translate(0,0);} }
+        @keyframes orbMove3 { 0%{transform:translate(0,0);} 20%{transform:translate(3px,-3px);} 55%{transform:translate(-2px,3px);} 100%{transform:translate(0,0);} }
+        @keyframes orbMove4 { 0%{transform:translate(0,0);} 35%{transform:translate(-3px,4px);} 70%{transform:translate(2px,2px);} 100%{transform:translate(0,0);} }
+        @keyframes orbColor1 { 0%{background:radial-gradient(circle,#B8D4FF,#A0B8FF);} 33%{background:radial-gradient(circle,#C8AAFF,#B090EE);} 66%{background:radial-gradient(circle,#AAD8FF,#90C4FF);} 100%{background:radial-gradient(circle,#B8D4FF,#A0B8FF);} }
+        @keyframes orbColor2 { 0%{background:radial-gradient(circle,#E0B0FF,#C89AFF);} 33%{background:radial-gradient(circle,#FFB8D8,#EE9EC8);} 66%{background:radial-gradient(circle,#D0B8FF,#B8A0FF);} 100%{background:radial-gradient(circle,#E0B0FF,#C89AFF);} }
+        
+        /* Product Form Modal */
+        .form-modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 300; align-items: flex-end; }
+        .form-modal.show { display: flex; animation: fadeIn 0.2s; }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        
+        .form-container { width: 100%; background: #F3F4F6; border-radius: 24px 24px 0 0; padding: 0; max-height: 90vh; overflow-y: auto; animation: slideUp 0.3s; }
+        @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
+        
+        .product-form-header { display: flex; justify-content: space-between; align-items: center; padding: 16px 20px; background: #F3F4F6; position: sticky; top: 0; z-index: 10; }
+        .cancel-btn { background: white; border: none; border-radius: 24px; padding: 10px 20px; font-size: 15px; font-weight: 600; color: #1A1A1A; cursor: pointer; }
+        .product-form-title { font-size: 16px; font-weight: 700; }
+        .save-btn { background: #0075FF; border: none; border-radius: 24px; padding: 10px 24px; font-size: 15px; font-weight: 600; color: white; cursor: pointer; }
+        .save-btn:active { background: #0066E0; transform: scale(0.98); }
+        
+        .product-form-content { padding: 0 20px 20px; }
+        .product-form-group { background: white; border-radius: 16px; padding: 16px; margin-bottom: 12px; }
+        .product-form-label { font-size: 14px; font-weight: 600; color: #DC2626; margin-bottom: 8px; display: block; }
+        .product-form-label.optional { color: #1A1A1A; }
+        
+        /* Generic Form Styles (for Expense & Customer forms) */
+        .form-header { display: flex; justify-content: space-between; align-items: center; padding: 16px 20px; background: #F3F4F6; position: sticky; top: 0; z-index: 10; }
+        .form-title { font-size: 16px; font-weight: 700; }
+        .form-content { padding: 0 20px 20px; }
+        .form-group { background: white; border-radius: 16px; padding: 16px; margin-bottom: 12px; }
+        .form-label { font-size: 14px; font-weight: 600; color: #DC2626; margin-bottom: 8px; display: block; }
+        .form-label.optional { color: #1A1A1A; }
+        .form-input { width: 100%; padding: 14px; border: none; border-radius: 12px; font-size: 15px; background: #F3F4F6; }
+        .form-input:focus { outline: none; background: #E5E7EB; }
+        .form-textarea { width: 100%; padding: 14px; border: none; border-radius: 12px; font-size: 15px; background: #F3F4F6; font-family: 'Inter', sans-serif; resize: vertical; }
+        .form-textarea:focus { outline: none; background: #E5E7EB; }
+        
+        .upload-btn { width: 100%; padding: 16px; background: white; border: 2px dashed #E5E7EB; border-radius: 12px; text-align: center; font-size: 15px; font-weight: 500; color: #1A1A1A; cursor: pointer; position: relative; }
+        .upload-btn:active { background: #F9FAFB; }
+        .upload-btn input[type="file"] { position: absolute; opacity: 0; width: 100%; height: 100%; top: 0; left: 0; cursor: pointer; }
+        .image-preview { width: 100%; height: 200px; object-fit: cover; border-radius: 12px; margin-top: 12px; display: none; }
+        .image-preview.show { display: block; }
+        
+        /* Period Dropdown Styles */
+        .period-option:hover { background: #F3F4F6; }
+        .period-option:active { background: #E5E7EB; }
+        .top-items-period-option:hover { background: #F3F4F6; }
+        .top-items-period-option:active { background: #E5E7EB; }
+        
+        .product-form-input { width: 100%; padding: 14px; border: none; background: transparent; font-size: 16px; color: #1A1A1A; font-family: inherit; }
+        .product-form-input::placeholder { color: #9CA3AF; }
+        .product-form-input:focus { outline: none; }
+        
+        .product-form-select { width: 100%; padding: 14px; border: none; background: transparent; font-size: 16px; color: #1A1A1A; font-family: inherit; appearance: none; background-image: url("data:image/svg+xml,%3Csvg width='12' height='8' viewBox='0 0 12 8' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M1 1L6 6L11 1' stroke='%239CA3AF' stroke-width='2' stroke-linecap='round'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 14px center; }
+        
+        .product-form-textarea { width: 100%; min-height: 100px; padding: 14px; border: none; background: transparent; font-size: 16px; color: #1A1A1A; font-family: inherit; resize: vertical; }
+        .product-form-textarea::placeholder { color: #9CA3AF; }
+        .product-form-textarea:focus { outline: none; }
+        
+        .toggle-row { display: flex; justify-content: space-between; align-items: center; padding: 16px; background: white; border-radius: 16px; margin-bottom: 12px; }
+        .toggle-label { font-size: 15px; font-weight: 600; }
+        .toggle-switch { position: relative; width: 52px; height: 32px; background: #E5E7EB; border-radius: 16px; cursor: pointer; transition: background 0.3s; }
+        .toggle-switch.active { background: #0075FF; }
+        .toggle-knob { position: absolute; top: 4px; left: 4px; width: 24px; height: 24px; background: white; border-radius: 50%; transition: transform 0.3s; box-shadow: 0 2px 4px rgba(0,0,0,0.2); }
+        .toggle-switch.active .toggle-knob { transform: translateX(20px); }
+        
+        .number-input-group { display: flex; align-items: center; gap: 12px; }
+        .number-btn { width: 40px; height: 40px; border-radius: 8px; background: #F3F4F6; border: none; font-size: 20px; font-weight: 600; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+        .number-btn:active { background: #E5E7EB; }
+        .number-input { flex: 1; text-align: center; font-size: 18px; font-weight: 600; }
+
+    </style>
+</head>
+<body>
+    <div class="content">
+        <div class="welcome">
+            <div>
+                <div class="welcome-title" id="businessName"></div>
+            </div>
+            <div style="display: flex; gap: 12px; align-items: center;">
+                <button class="profile-btn" onclick="window.location.href='search.html'">
+                    <svg style="width: 26px; height: 26px; fill: none; stroke: #1A1A1A; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round;" viewBox="0 0 24 24"><path d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z"/></svg>
+                </button>
+            </div>
+        </div>
+        
+        <div style="background: linear-gradient(135deg, #0075FF 0%, #0055CC 100%); border-radius: 16px; padding: 16px; box-shadow: 0 4px 16px rgba(0,117,255,0.3); margin-bottom: 20px; position: relative; overflow: hidden;">
+            <div style="position: absolute; top: -20px; right: -20px; width: 100px; height: 100px; border-radius: 50%; background: rgba(255,255,255,0.07); pointer-events: none;"></div>
+            <div style="position: absolute; bottom: -30px; right: 40px; width: 80px; height: 80px; border-radius: 50%; background: rgba(255,255,255,0.05); pointer-events: none;"></div>
+            <div style="display: flex; align-items: center; gap: 8px; font-size: 16px; font-weight: 700; color: white; margin-bottom: 16px; position: relative;">
+                <svg style="width: 20px; height: 20px; fill: white;" viewBox="0 0 24 24"><path fill-rule="evenodd" d="M9.315 7.584C12.195 3.883 16.695 1.5 21.75 1.5a.75.75 0 0 1 .75.75c0 5.056-2.383 9.555-6.084 12.436A6.75 6.75 0 0 1 9.75 22.5a.75.75 0 0 1-.75-.75v-4.131A15.838 15.838 0 0 1 6.382 15H2.25a.75.75 0 0 1-.75-.75 6.75 6.75 0 0 1 7.815-6.666ZM15 6.75a2.25 2.25 0 1 0 0 4.5 2.25 2.25 0 0 0 0-4.5Z" clip-rule="evenodd"/><path d="M5.26 17.242a.75.75 0 1 0-.897-1.203 5.243 5.243 0 0 0-2.05 5.022.75.75 0 0 0 .625.627 5.243 5.243 0 0 0 5.022-2.051.75.75 0 1 0-1.202-.897 3.744 3.744 0 0 1-3.008 1.51c0-1.23.592-2.323 1.51-3.008Z"/></svg>
+                Quick Actions
+            </div>
+            <div style="display: flex; justify-content: space-between; gap: 6px; position: relative;">
+                <!-- Record Sale -->
+                <div onclick="window.location.href='record-sale.html?from=home'" style="flex: 1; display: flex; flex-direction: column; align-items: center; gap: 8px; cursor: pointer;">
+                    <div style="width: 60px; height: 60px; background: #F3F4F6; border-radius: 16px; display: flex; align-items: center; justify-content: center;">
+                        <svg style="width: 28px; height: 28px; fill: none; stroke: #374151; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round;" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M12 3c-1.833 0-3.647.107-5.432.314-1.43.167-2.318 1.396-2.318 2.8V21a.75.75 0 0 0 1.029.696l3.471-1.388 3.472 1.388a.75.75 0 0 0 .556 0l3.472-1.388 3.471 1.388A.75.75 0 0 0 20.75 21V6.114c0-1.404-.888-2.633-2.318-2.8A49.654 49.654 0 0 0 12 3Zm3.28 6.22a.75.75 0 0 1 0 1.06l-6 6a.75.75 0 0 1-1.06-1.06l6-6a.75.75 0 0 1 1.06 0Zm-5.78-.47a1.25 1.25 0 1 0 0 2.5 1.25 1.25 0 0 0 0-2.5Zm4.5 4.5a1.25 1.25 0 1 0 0 2.5 1.25 1.25 0 0 0 0-2.5Z"/>
+                        </svg>
+                    </div>
+                    <span style="font-size: 12px; font-weight: 600; color: white; text-align: center;">Record Sale</span>
+                </div>
+                <!-- Add Item -->
+                <div onclick="window.location.href='add-item.html'" style="flex: 1; display: flex; flex-direction: column; align-items: center; gap: 8px; cursor: pointer;">
+                    <div style="width: 60px; height: 60px; background: #F3F4F6; border-radius: 16px; display: flex; align-items: center; justify-content: center;">
+                        <svg style="width: 28px; height: 28px; fill: none; stroke: #374151; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round;" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 10.5V6a3.75 3.75 0 1 0-7.5 0v4.5m11.356-1.993 1.263 12c.07.665-.45 1.243-1.119 1.243H4.25a1.125 1.125 0 0 1-1.12-1.243l1.264-12A1.125 1.125 0 0 1 5.513 7.5h12.974c.576 0 1.059.435 1.119 1.007ZM8.625 10.5a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm7.5 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Z"/>
+                        </svg>
+                    </div>
+                    <span style="font-size: 12px; font-weight: 600; color: white; text-align: center;">Add Item</span>
+                </div>
+                <!-- Add Customer -->
+                <div onclick="window.location.href='add-customer.html'" style="flex: 1; display: flex; flex-direction: column; align-items: center; gap: 8px; cursor: pointer;">
+                    <div style="width: 60px; height: 60px; background: #F3F4F6; border-radius: 16px; display: flex; align-items: center; justify-content: center;">
+                        <svg style="width: 28px; height: 28px; fill: none; stroke: #374151; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round;" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 6a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0ZM4.501 20.118a7.5 7.5 0 0 1 14.998 0A17.933 17.933 0 0 1 12 21.75c-2.676 0-5.216-.584-7.499-1.632Z"/>
+                        </svg>
+                    </div>
+                    <span style="font-size: 12px; font-weight: 600; color: white; text-align: center;">Customer</span>
+                </div>
+                <!-- Add Expense -->
+                <div onclick="window.location.href='add-expense.html'" style="flex: 1; display: flex; flex-direction: column; align-items: center; gap: 8px; cursor: pointer;">
+                    <div style="width: 60px; height: 60px; background: #F3F4F6; border-radius: 16px; display: flex; align-items: center; justify-content: center;">
+                        <svg style="width: 28px; height: 28px; fill: none; stroke: #374151; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round;" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 8.25h19.5M2.25 9h19.5m-16.5 5.25h6m-6 2.25h3m-3.75 3h15a2.25 2.25 0 0 0 2.25-2.25V6.75A2.25 2.25 0 0 0 19.5 4.5h-15a2.25 2.25 0 0 0-2.25 2.25v10.5A2.25 2.25 0 0 0 4.5 19.5Z"/>
+                        </svg>
+                    </div>
+                    <span style="font-size: 12px; font-weight: 600; color: white; text-align: center;">Expense</span>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Sales Summary -->
+        <div class="card" style="margin-bottom: 12px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                <div style="font-size: 14px; font-weight: 700;">Sales Summary</div>
+                <div style="position: relative;">
+                    <button id="periodBtn" onclick="toggleDropdown('periodDropdown'); return false;" style="background: none; border: none; border-radius: 16px; padding: 6px 4px; font-size: 12px; font-weight: 600; display: flex; align-items: center; gap: 4px; cursor: pointer;">
+                        <span id="periodText">This Month</span>
+                        <svg style="width: 12px; height: 12px;" viewBox="0 0 12 8" fill="none"><path d="M1 1L6 6L11 1" stroke="#6B7280" stroke-width="2" stroke-linecap="round"/></svg>
+                    </button>
+                    <div id="periodDropdown" style="display: none; position: absolute; top: 100%; right: 0; margin-top: 4px; background: white; border: 1px solid #E5E7EB; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); min-width: 120px; z-index: 200;">
+                        <div class="period-option" onclick="event.stopPropagation(); selectPeriod('periodText', 'periodDropdown', 'Today');" style="padding: 10px 16px; font-size: 13px; font-weight: 500; cursor: pointer; border-radius: 12px 12px 0 0;">Today</div>
+                        <div class="period-option" onclick="event.stopPropagation(); selectPeriod('periodText', 'periodDropdown', 'This Week');" style="padding: 10px 16px; font-size: 13px; font-weight: 500; cursor: pointer;">This Week</div>
+                        <div class="period-option" onclick="event.stopPropagation(); selectPeriod('periodText', 'periodDropdown', 'This Month');" style="padding: 10px 16px; font-size: 13px; font-weight: 500; cursor: pointer; background: #F3F4F6;">This Month</div>
+                        <div class="period-option" onclick="event.stopPropagation(); selectPeriod('periodText', 'periodDropdown', 'This Year');" style="padding: 10px 16px; font-size: 13px; font-weight: 500; cursor: pointer; border-radius: 0 0 12px 12px;">This Year</div>
+                    </div>
+                </div>
+            </div>
+            <div style="display: flex; gap: 6px; margin-bottom: 12px;">
+                <button id="amountBtn" style="background: #1A1A1A; border: none; border-radius: 16px; padding: 6px 14px; font-size: 12px; font-weight: 600; color: white; cursor: pointer;">Amount</button>
+                <button id="quantityBtn" style="background: #F3F4F6; border: none; border-radius: 16px; padding: 6px 14px; font-size: 12px; font-weight: 600; color: #6B7280; cursor: pointer;">Quantity</button>
+            </div>
+            <div style="background: #EFF6FF; border-radius: 12px; padding: 12px;">
+                <div id="amountFigures" style="text-align: center; margin-bottom: 12px;">
+                    <div style="font-size: 24px; font-weight: 700; color: #1A1A1A; margin-bottom: 4px;">₦0</div>
+                    <div style="font-size: 11px; color: #6B7280;">0 transactions • ₦0 avg</div>
+                </div>
+                <div id="quantityFigures" style="display: none; text-align: center; margin-bottom: 12px;">
+                    <div style="font-size: 24px; font-weight: 700; color: #1A1A1A; margin-bottom: 4px;">0</div>
+                    <div style="font-size: 11px; color: #6B7280;">items sold • 0 avg/day</div>
+                </div>
+                <div style="height: 90px; display: flex; flex-direction: column; justify-content: space-between;">
+                    <!-- Amount Area Chart -->
+                    <div id="amountChart" style="display: flex; flex-direction: column; height: 100%;">
+                        <svg viewBox="0 0 280 60" style="width: 100%; flex: 1;" preserveAspectRatio="none">
+                            <defs>
+                                <linearGradient id="amountGrad" x1="0" y1="0" x2="0" y2="1">
+                                    <stop offset="0%" stop-color="#0075FF" stop-opacity="0.18"/>
+                                    <stop offset="100%" stop-color="#0075FF" stop-opacity="0"/>
+                                </linearGradient>
+                            </defs>
+                            <path d="M 0,42 C 30,42 60,22 93,22 C 126,22 150,36 187,36 C 224,36 254,6 280,6 L 280,58 L 0,58 Z" fill="url(#amountGrad)"/>
+                            <path d="M 0,42 C 30,42 60,22 93,22 C 126,22 150,36 187,36 C 224,36 254,6 280,6" fill="none" stroke="#0075FF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                            <circle cx="0" cy="42" r="3" fill="#0075FF"/>
+                            <circle cx="93" cy="22" r="3" fill="#0075FF"/>
+                            <circle cx="187" cy="36" r="3" fill="#0075FF"/>
+                            <circle cx="280" cy="6" r="4" fill="white" stroke="#0075FF" stroke-width="2"/>
+                        </svg>
+                        <div style="display: flex; justify-content: space-between; font-size: 9px; color: #9CA3AF; padding: 4px 0 0;">
+                            <span>Wk 1</span><span>Wk 2</span><span>Wk 3</span><span style="font-weight: 700; color: #0075FF;">Wk 4</span>
+                        </div>
+                    </div>
+                    <!-- Quantity Area Chart -->
+                    <div id="quantityChart" style="display: none; flex-direction: column; height: 100%;">
+                        <svg viewBox="0 0 280 60" style="width: 100%; flex: 1;" preserveAspectRatio="none">
+                            <defs>
+                                <linearGradient id="quantityGrad" x1="0" y1="0" x2="0" y2="1">
+                                    <stop offset="0%" stop-color="#8B5CF6" stop-opacity="0.18"/>
+                                    <stop offset="100%" stop-color="#8B5CF6" stop-opacity="0"/>
+                                </linearGradient>
+                            </defs>
+                            <path d="M 0,48 C 30,48 60,30 93,30 C 126,30 150,42 187,42 C 224,42 254,12 280,12 L 280,58 L 0,58 Z" fill="url(#quantityGrad)"/>
+                            <path d="M 0,48 C 30,48 60,30 93,30 C 126,30 150,42 187,42 C 224,42 254,12 280,12" fill="none" stroke="#8B5CF6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                            <circle cx="0" cy="48" r="3" fill="#8B5CF6"/>
+                            <circle cx="93" cy="30" r="3" fill="#8B5CF6"/>
+                            <circle cx="187" cy="42" r="3" fill="#8B5CF6"/>
+                            <circle cx="280" cy="12" r="4" fill="white" stroke="#8B5CF6" stroke-width="2"/>
+                        </svg>
+                        <div style="display: flex; justify-content: space-between; font-size: 9px; color: #9CA3AF; padding: 4px 0 0;">
+                            <span>Wk 1</span><span>Wk 2</span><span>Wk 3</span><span style="font-weight: 700; color: #8B5CF6;">Wk 4</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Top Selling Items -->
+        <div class="card" style="margin-bottom: 12px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                <div style="font-size: 14px; font-weight: 700;">Top Selling Items</div>
+                <div style="position: relative;">
+                    <button id="topItemsPeriodBtn" onclick="toggleDropdown('topItemsPeriodDropdown'); return false;" style="background: none; border: none; border-radius: 16px; padding: 6px 4px; font-size: 12px; font-weight: 600; display: flex; align-items: center; gap: 4px; cursor: pointer;">
+                        <span id="topItemsPeriodText">This Month</span>
+                        <svg style="width: 12px; height: 12px;" viewBox="0 0 12 8" fill="none"><path d="M1 1L6 6L11 1" stroke="#6B7280" stroke-width="2" stroke-linecap="round"/></svg>
+                    </button>
+                    <div id="topItemsPeriodDropdown" style="display: none; position: absolute; top: 100%; right: 0; margin-top: 4px; background: white; border: 1px solid #E5E7EB; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); min-width: 120px; z-index: 200;">
+                        <div class="top-items-period-option" onclick="event.stopPropagation(); selectPeriod('topItemsPeriodText', 'topItemsPeriodDropdown', 'Today');" style="padding: 10px 16px; font-size: 13px; font-weight: 500; cursor: pointer; border-radius: 12px 12px 0 0;">Today</div>
+                        <div class="top-items-period-option" onclick="event.stopPropagation(); selectPeriod('topItemsPeriodText', 'topItemsPeriodDropdown', 'This Week');" style="padding: 10px 16px; font-size: 13px; font-weight: 500; cursor: pointer;">This Week</div>
+                        <div class="top-items-period-option" onclick="event.stopPropagation(); selectPeriod('topItemsPeriodText', 'topItemsPeriodDropdown', 'This Month');" style="padding: 10px 16px; font-size: 13px; font-weight: 500; cursor: pointer; background: #F3F4F6;">This Month</div>
+                        <div class="top-items-period-option" onclick="event.stopPropagation(); selectPeriod('topItemsPeriodText', 'topItemsPeriodDropdown', 'This Year');" style="padding: 10px 16px; font-size: 13px; font-weight: 500; cursor: pointer; border-radius: 0 0 12px 12px;">This Year</div>
+                    </div>
+                </div>
+            </div>
+            <div id="topItemsList" style="display: flex; flex-direction: column; gap: 6px;">
+                <div style="display: flex; align-items: center; gap: 8px; padding: 8px; background: #F9FAFB; border-radius: 6px;">
+                    <div style="font-size: 14px; font-weight: 700; color: #FFD700; width: 18px; text-align: center;">1</div>
+                    <div style="flex: 1; min-width: 0;">
+                        <div id="topItem1Name" style="font-size: 12px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">-</div>
+                        <div id="topItem1Sold" style="font-size: 9px; color: #6B7280;">0 sold</div>
+                    </div>
+                    <div id="topItem1Amount" style="font-size: 12px; font-weight: 700;">₦0</div>
+                </div>
+                <div style="display: flex; align-items: center; gap: 8px; padding: 8px; background: #F9FAFB; border-radius: 6px;">
+                    <div style="font-size: 14px; font-weight: 700; color: #C0C0C0; width: 18px; text-align: center;">2</div>
+                    <div style="flex: 1; min-width: 0;">
+                        <div id="topItem2Name" style="font-size: 12px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">-</div>
+                        <div id="topItem2Sold" style="font-size: 9px; color: #6B7280;">0 sold</div>
+                    </div>
+                    <div id="topItem2Amount" style="font-size: 12px; font-weight: 700;">₦0</div>
+                </div>
+                <div style="display: flex; align-items: center; gap: 8px; padding: 8px; background: #F9FAFB; border-radius: 6px;">
+                    <div style="font-size: 14px; font-weight: 700; color: #CD7F32; width: 18px; text-align: center;">3</div>
+                    <div style="flex: 1; min-width: 0;">
+                        <div id="topItem3Name" style="font-size: 12px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">-</div>
+                        <div id="topItem3Sold" style="font-size: 9px; color: #6B7280;">0 sold</div>
+                    </div>
+                    <div id="topItem3Amount" style="font-size: 12px; font-weight: 700;">₦0</div>
+                </div>
+                <div style="display: flex; align-items: center; gap: 8px; padding: 8px; background: #F9FAFB; border-radius: 6px;">
+                    <div style="font-size: 14px; font-weight: 700; color: #6B7280; width: 18px; text-align: center;">4</div>
+                    <div style="flex: 1; min-width: 0;">
+                        <div id="topItem4Name" style="font-size: 12px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">-</div>
+                        <div id="topItem4Sold" style="font-size: 9px; color: #6B7280;">0 sold</div>
+                    </div>
+                    <div id="topItem4Amount" style="font-size: 12px; font-weight: 700;">₦0</div>
+                </div>
+                <div style="display: flex; align-items: center; gap: 8px; padding: 8px; background: #F9FAFB; border-radius: 6px;">
+                    <div style="font-size: 14px; font-weight: 700; color: #6B7280; width: 18px; text-align: center;">5</div>
+                    <div style="flex: 1; min-width: 0;">
+                        <div id="topItem5Name" style="font-size: 12px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">-</div>
+                        <div id="topItem5Sold" style="font-size: 9px; color: #6B7280;">0 sold</div>
+                    </div>
+                    <div id="topItem5Amount" style="font-size: 12px; font-weight: 700;">₦0</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Profit Snapshot -->
+        <div class="card" style="margin-bottom: 12px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                <div style="font-size: 14px; font-weight: 700;">Profit Snapshot</div>
+                <div style="position: relative;">
+                    <button onclick="toggleDropdown('profitDropdown'); return false;" style="background: none; border: none; border-radius: 16px; padding: 6px 4px; font-size: 12px; font-weight: 600; display: flex; align-items: center; gap: 4px; cursor: pointer;">
+                        <span id="profitPeriodText">This Month</span>
+                        <svg style="width: 12px; height: 12px;" viewBox="0 0 12 8" fill="none"><path d="M1 1L6 6L11 1" stroke="#6B7280" stroke-width="2" stroke-linecap="round"/></svg>
+                    </button>
+                    <div id="profitDropdown" style="display: none; position: absolute; top: 100%; right: 0; margin-top: 4px; background: white; border: 1px solid #E5E7EB; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); min-width: 120px; z-index: 200;">
+                        <div class="period-option" onclick="event.stopPropagation(); selectPeriod('profitPeriodText','profitDropdown','Today');" style="padding: 10px 16px; font-size: 13px; font-weight: 500; cursor: pointer; border-radius: 12px 12px 0 0;">Today</div>
+                        <div class="period-option" onclick="event.stopPropagation(); selectPeriod('profitPeriodText','profitDropdown','This Week');" style="padding: 10px 16px; font-size: 13px; font-weight: 500; cursor: pointer;">This Week</div>
+                        <div class="period-option" onclick="event.stopPropagation(); selectPeriod('profitPeriodText','profitDropdown','This Month');" style="padding: 10px 16px; font-size: 13px; font-weight: 500; cursor: pointer; background: #F3F4F6;">This Month</div>
+                        <div class="period-option" onclick="event.stopPropagation(); selectPeriod('profitPeriodText','profitDropdown','This Year');" style="padding: 10px 16px; font-size: 13px; font-weight: 500; cursor: pointer; border-radius: 0 0 12px 12px;">This Year</div>
+                    </div>
+                </div>
+            </div>
+            <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 12px;">
+                <div style="background: #F0FDF4; border-radius: 12px; padding: 12px; text-align: center;">
+                    <div style="font-size: 10px; color: #16A34A; font-weight: 600; margin-bottom: 4px;">Revenue</div>
+                    <div id="profitRevenue" style="font-size: 15px; font-weight: 700; color: #1A1A1A;">₦0</div>
+                </div>
+                <div style="background: #FFF1F2; border-radius: 12px; padding: 12px; text-align: center;">
+                    <div style="font-size: 10px; color: #E11D48; font-weight: 600; margin-bottom: 4px;">Expenses</div>
+                    <div id="profitExpenses" style="font-size: 15px; font-weight: 700; color: #1A1A1A;">₦0</div>
+                </div>
+                <div style="background: #EFF6FF; border-radius: 12px; padding: 12px; text-align: center;">
+                    <div style="font-size: 10px; color: #2563EB; font-weight: 600; margin-bottom: 4px;">Net Profit</div>
+                    <div id="profitNet" style="font-size: 15px; font-weight: 700; color: #1A1A1A;">₦0</div>
+                </div>
+            </div>
+            <div style="background: #F9FAFB; border-radius: 10px; padding: 10px 12px; display: flex; align-items: center; justify-content: center; gap: 6px;">
+                <svg style="width: 14px; height: 14px; fill: #9CA3AF;" viewBox="0 0 24 24"><path fill-rule="evenodd" d="M2.25 12c0-5.385 4.365-9.75 9.75-9.75s9.75 4.365 9.75 9.75-4.365 9.75-9.75 9.75S2.25 17.385 2.25 12Zm8.706-1.442c1.146-.573 2.437.463 2.126 1.706l-.709 2.836.042-.02a.75.75 0 0 1 .67 1.34l-.04.022c-1.147.573-2.438-.463-2.127-1.706l.71-2.836-.042.02a.75.75 0 1 1-.671-1.34l.041-.022ZM12 9a.75.75 0 1 0 0-1.5.75.75 0 0 0 0 1.5Z" clip-rule="evenodd"/></svg>
+                <span style="font-size: 11px; color: #6B7280;">Profit = Revenue − Expenses</span>
+            </div>
+        </div>
+
+        <!-- Cash Flow -->
+        <div class="card" style="margin-bottom: 12px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                <div style="font-size: 14px; font-weight: 700;">Cash Flow</div>
+                <div style="position: relative;">
+                    <button onclick="toggleDropdown('cashDropdown'); return false;" style="background: none; border: none; border-radius: 16px; padding: 6px 4px; font-size: 12px; font-weight: 600; display: flex; align-items: center; gap: 4px; cursor: pointer;">
+                        <span id="cashPeriodText">This Month</span>
+                        <svg style="width: 12px; height: 12px;" viewBox="0 0 12 8" fill="none"><path d="M1 1L6 6L11 1" stroke="#6B7280" stroke-width="2" stroke-linecap="round"/></svg>
+                    </button>
+                    <div id="cashDropdown" style="display: none; position: absolute; top: 100%; right: 0; margin-top: 4px; background: white; border: 1px solid #E5E7EB; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); min-width: 120px; z-index: 200;">
+                        <div class="period-option" onclick="event.stopPropagation(); selectPeriod('cashPeriodText','cashDropdown','Today');" style="padding: 10px 16px; font-size: 13px; font-weight: 500; cursor: pointer; border-radius: 12px 12px 0 0;">Today</div>
+                        <div class="period-option" onclick="event.stopPropagation(); selectPeriod('cashPeriodText','cashDropdown','This Week');" style="padding: 10px 16px; font-size: 13px; font-weight: 500; cursor: pointer;">This Week</div>
+                        <div class="period-option" onclick="event.stopPropagation(); selectPeriod('cashPeriodText','cashDropdown','This Month');" style="padding: 10px 16px; font-size: 13px; font-weight: 500; cursor: pointer; background: #F3F4F6;">This Month</div>
+                        <div class="period-option" onclick="event.stopPropagation(); selectPeriod('cashPeriodText','cashDropdown','This Year');" style="padding: 10px 16px; font-size: 13px; font-weight: 500; cursor: pointer; border-radius: 0 0 12px 12px;">This Year</div>
+                    </div>
+                </div>
+            </div>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 12px;">
+                <div style="background: #F0FDF4; border-radius: 12px; padding: 14px;">
+                    <div style="display: flex; align-items: center; gap: 6px; margin-bottom: 6px;">
+                        <svg style="width: 14px; height: 14px; fill: #16A34A;" viewBox="0 0 24 24"><path fill-rule="evenodd" d="M12 3.75a.75.75 0 0 1 .75.75v6.75h6.75a.75.75 0 0 1 0 1.5h-6.75v6.75a.75.75 0 0 1-1.5 0v-6.75H4.5a.75.75 0 0 1 0-1.5h6.75V4.5a.75.75 0 0 1 .75-.75Z" clip-rule="evenodd"/></svg>
+                        <span style="font-size: 11px; font-weight: 600; color: #16A34A;">Cash In</span>
+                    </div>
+                    <div id="cashInAmount" style="font-size: 18px; font-weight: 700; color: #1A1A1A;">₦0</div>
+                    <div id="cashInCount" style="font-size: 10px; color: #6B7280; margin-top: 2px;">0 sources</div>
+                </div>
+                <div style="background: #FFF1F2; border-radius: 12px; padding: 14px;">
+                    <div style="display: flex; align-items: center; gap: 6px; margin-bottom: 6px;">
+                        <svg style="width: 14px; height: 14px; fill: #E11D48;" viewBox="0 0 24 24"><path fill-rule="evenodd" d="M3.75 12a.75.75 0 0 1 .75-.75h15a.75.75 0 0 1 0 1.5h-15a.75.75 0 0 1-.75-.75Z" clip-rule="evenodd"/></svg>
+                        <span style="font-size: 11px; font-weight: 600; color: #E11D48;">Cash Out</span>
+                    </div>
+                    <div id="cashOutAmount" style="font-size: 18px; font-weight: 700; color: #1A1A1A;">₦0</div>
+                    <div id="cashOutCount" style="font-size: 10px; color: #6B7280; margin-top: 2px;">0 expenses</div>
+                </div>
+            </div>
+            <div style="background: #F9FAFB; border-radius: 10px; padding: 10px 14px; display: flex; justify-content: space-between; align-items: center;">
+                <span style="font-size: 12px; font-weight: 600; color: #374151;">Total Balance</span>
+                <span id="cashTotalBalance" style="font-size: 14px; font-weight: 700; color: #2563EB;">₦0</span>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- Methang AI FAB -->
+
+    <nav class="bottom-nav">
+        <!-- Bottom Nav Icons -->
+        <div class="nav-icons-row">
+            <div class="nav-item active" onclick="window.location.href='home.html'">
+                <svg class="nav-icon-filled" viewBox="0 0 24 24"><path fill-rule="evenodd" d="M11.47 3.84a.75.75 0 0 1 1.06 0l8.69 8.69a.75.75 0 1 1-1.06 1.06l-.69-.69V19.5a.75.75 0 0 1-.75.75h-4.5a.75.75 0 0 1-.75-.75v-4.5a.75.75 0 0 0-.75-.75h-1.5a.75.75 0 0 0-.75.75v4.5a.75.75 0 0 1-.75.75H5.25a.75.75 0 0 1-.75-.75V12.9l-.69.69a.75.75 0 0 1-1.06-1.06l8.69-8.69Z" clip-rule="evenodd"/></svg>
+                <svg class="nav-icon-outline" viewBox="0 0 24 24"><path d="m2.25 12 8.954-8.955c.44-.439 1.152-.439 1.591 0L21.75 12M4.5 9.75v10.125c0 .621.504 1.125 1.125 1.125H9.75v-4.875c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21h4.125c.621 0 1.125-.504 1.125-1.125V9.75M8.25 21h8.25"/></svg>
+                <div class="nav-label">Home</div>
+            </div>
+            <div class="nav-item" onclick="window.location.href='ai.html'">
+                <div class="ai-orb-nav">
+                    <div class="ai-orb-shell">
+                        <div class="ai-orb-blobs">
+                            <div class="ai-orb-blob ai-orb-blob-1"></div>
+                            <div class="ai-orb-blob ai-orb-blob-2"></div>
+                            <div class="ai-orb-blob ai-orb-blob-3"></div>
+                            <div class="ai-orb-blob ai-orb-blob-4"></div>
+                        </div>
+                        <div class="ai-orb-gloss"></div>
+                    </div>
+                </div>
+                <div class="nav-label">Ask AI</div>
+            </div>
+            <div class="nav-item" onclick="window.location.href='notifications.html'">
+                <svg class="nav-icon-filled" viewBox="0 0 24 24"><path d="M5.85 3.5a.75.75 0 0 0-1.117-1 9.719 9.719 0 0 0-2.348 4.876.75.75 0 0 0 1.479.248A8.219 8.219 0 0 1 5.85 3.5ZM19.267 2.5a.75.75 0 1 0-1.118 1 8.22 8.22 0 0 1 1.987 4.124.75.75 0 0 0 1.48-.248A9.72 9.72 0 0 0 19.266 2.5Z"/><path fill-rule="evenodd" d="M12 2.25A6.75 6.75 0 0 0 5.25 9v.75a8.217 8.217 0 0 1-2.119 5.52.75.75 0 0 0 .298 1.206c1.544.57 3.16.99 4.831 1.243a3.75 3.75 0 1 0 7.48 0 24.583 24.583 0 0 0 4.83-1.244.75.75 0 0 0 .298-1.205 8.217 8.217 0 0 1-2.118-5.52V9A6.75 6.75 0 0 0 12 2.25ZM9.75 18c0-.034 0-.067.002-.1a25.05 25.05 0 0 0 4.496 0l.002.1a2.25 2.25 0 1 1-4.5 0Z" clip-rule="evenodd"/></svg>
+                <svg class="nav-icon-outline" viewBox="0 0 24 24"><path d="M14.857 17.082a23.848 23.848 0 0 0 5.454-1.31A8.967 8.967 0 0 1 18 9.75V9A6 6 0 0 0 6 9v.75a8.967 8.967 0 0 1-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 0 1-5.714 0m5.714 0a3 3 0 1 1-5.714 0"/></svg>
+                <div class="nav-label">Notifications</div>
+            </div>
+            <div class="nav-item" onclick="window.location.href='menu.html'">
+                <svg class="nav-icon-filled" viewBox="0 0 24 24"><path fill-rule="evenodd" d="M3 6a3 3 0 0 1 3-3h2.25a3 3 0 0 1 3 3v2.25a3 3 0 0 1-3 3H6a3 3 0 0 1-3-3V6Zm9.75 0a3 3 0 0 1 3-3H18a3 3 0 0 1 3 3v2.25a3 3 0 0 1-3 3h-2.25a3 3 0 0 1-3-3V6ZM3 15.75a3 3 0 0 1 3-3h2.25a3 3 0 0 1 3 3V18a3 3 0 0 1-3 3H6a3 3 0 0 1-3-3v-2.25Zm9.75 0a3 3 0 0 1 3-3H18a3 3 0 0 1 3 3V18a3 3 0 0 1-3 3h-2.25a3 3 0 0 1-3-3v-2.25Z" clip-rule="evenodd"/></svg>
+                <svg class="nav-icon-outline" viewBox="0 0 24 24"><path d="M3.75 6A2.25 2.25 0 0 1 6 3.75h2.25A2.25 2.25 0 0 1 10.5 6v2.25a2.25 2.25 0 0 1-2.25 2.25H6a2.25 2.25 0 0 1-2.25-2.25V6ZM3.75 15.75A2.25 2.25 0 0 1 6 13.5h2.25a2.25 2.25 0 0 1 2.25 2.25V18a2.25 2.25 0 0 1-2.25 2.25H6A2.25 2.25 0 0 1 3.75 18v-2.25ZM13.5 6a2.25 2.25 0 0 1 2.25-2.25H18A2.25 2.25 0 0 1 20.25 6v2.25A2.25 2.25 0 0 1 18 10.5h-2.25a2.25 2.25 0 0 1-2.25-2.25V6ZM13.5 15.75a2.25 2.25 0 0 1 2.25-2.25H18a2.25 2.25 0 0 1 2.25 2.25V18A2.25 2.25 0 0 1 18 20.25h-2.25A2.25 2.25 0 0 1 13.5 18v-2.25Z"/></svg>
+                <div class="nav-label">Menu</div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Product Form Modal -->
+    <div class="form-modal" id="productFormModal">
+        <div class="form-container">
+            <div class="product-form-header">
+                <button class="cancel-btn" id="cancelProductBtn">Cancel</button>
+                <div class="product-form-title">Add Item</div>
+                <button class="save-btn" id="saveProductBtn">Save</button>
+            </div>
+            
+            <div class="product-form-content">
+                <div class="product-form-group">
+                    <div class="upload-btn">
+                        Upload Image
+                        <input type="file" id="productImageUpload" accept="image/*">
+                    </div>
+                    <img id="productImagePreview" class="image-preview">
+                </div>
+                
+                <div class="product-form-group">
+                    <label class="product-form-label">Item Name</label>
+                    <input type="text" class="product-form-input" id="productNameInput" placeholder="Tap to Enter" required>
+                </div>
+                
+                <div class="product-form-group">
+                    <label class="product-form-label">Stock/Quantity</label>
+                    <div class="number-input-group">
+                        <button class="number-btn" id="decreaseStockBtn">−</button>
+                        <input type="number" class="product-form-input number-input" id="productStock" value="0" min="0">
+                        <button class="number-btn" id="increaseStockBtn">+</button>
+                    </div>
+                </div>
+                
+                <div class="product-form-group">
+                    <label class="product-form-label">Category</label>
+                    <select class="product-form-select" id="productCategory">
+                        <option value="">Tap to Select</option>
+                        <option value="__custom__">+ Add New Category</option>
+                    </select>
+                    <input type="text" class="product-form-input" id="customCategoryInput" placeholder="Enter new category name" style="display: none; margin-top: 12px; border: 2px solid #0075FF; border-radius: 12px; padding: 14px;">
+                </div>
+                
+                <div class="product-form-group">
+                    <label class="product-form-label optional">Description</label>
+                    <textarea class="product-form-textarea" id="productDescription" placeholder="Enter item description (optional)"></textarea>
+                </div>
+                
+                <div class="toggle-row">
+                    <div class="toggle-label">Returnable Item</div>
+                    <div class="toggle-switch" id="returnableToggle">
+                        <div class="toggle-knob"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Expense Form Modal -->
+    <div class="form-modal" id="expenseFormModal">
+        <div class="form-container">
+            <div class="form-header">
+                <button class="cancel-btn" id="cancelExpenseBtn">Cancel</button>
+                <div class="form-title">Add Expense</div>
+                <button class="save-btn" id="saveExpenseBtn">Save</button>
+            </div>
+            
+            <div class="form-content">
+                <div class="form-group">
+                    <label class="form-label">Description</label>
+                    <input type="text" class="form-input" id="expenseDescription" placeholder="What did you spend on?" required>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">Amount (₦)</label>
+                    <input type="number" class="form-input" id="expenseAmount" placeholder="0.00" required>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">Date</label>
+                    <input type="date" class="form-input" id="expenseDate" required>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label optional">Category</label>
+                    <select class="form-input" id="expenseCategory">
+                        <option value="">Select category</option>
+                        <option value="Rent">Rent</option>
+                        <option value="Utilities">Utilities</option>
+                        <option value="Supplies">Supplies</option>
+                        <option value="Marketing">Marketing</option>
+                        <option value="Transport">Transport</option>
+                        <option value="Salaries">Salaries</option>
+                        <option value="Other">Other</option>
+                        <option value="__custom__">+ Add New Category</option>
+                    </select>
+                    <input type="text" class="form-input" id="customExpenseCategory" placeholder="Enter new category" style="display: none; margin-top: 12px;">
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label optional">Notes</label>
+                    <textarea class="form-textarea" id="expenseNotes" placeholder="Additional notes (optional)" style="min-height: 80px;"></textarea>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Customer Form Modal -->
+    <div class="form-modal" id="customerFormModal">
+        <div class="form-container">
+            <div class="form-header">
+                <button class="cancel-btn" id="cancelCustomerBtn">Cancel</button>
+                <div class="form-title">Add Customer</div>
+                <button class="save-btn" id="saveCustomerBtn">Save</button>
+            </div>
+            
+            <div class="form-content">
+                <div class="form-group">
+                    <label class="form-label">Customer Name</label>
+                    <input type="text" class="form-input" id="customerName" placeholder="Tap to Enter" required>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">Phone Number</label>
+                    <input type="tel" class="form-input" id="customerPhone" placeholder="08012345678" required>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label optional">Email</label>
+                    <input type="email" class="form-input" id="customerEmail" placeholder="customer@example.com">
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label optional">Address</label>
+                    <textarea class="form-textarea" id="customerAddress" placeholder="Enter customer address (optional)" style="min-height: 80px;"></textarea>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label optional">Notes</label>
+                    <textarea class="form-textarea" id="customerNotes" placeholder="Enter additional notes (optional)" style="min-height: 80px;"></textarea>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const SUPABASE_URL = 'https://ufcpvbabgtftyfumzpnp.supabase.co';
+        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVmY3B2YmFiZ3RmdHlmdW16cG5wIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ4ODEwMzcsImV4cCI6MjA5MDQ1NzAzN30.TzFJxnc8_ykXegNo2oMlN0xHXPkwHQcYNMAFMJorq5U';
+        const db = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+        // Check auth on load
+        async function checkAuth() {
+            const { data: { session }, error } = await db.auth.getSession();
+            if (error || !session) {
+                window.location.href = 'login.html';
+                return;
+            }
+            const user = session.user;
+            await loadBusinessName(user.id);
+            await loadDashboardData(user.id);
+        }
+
+        // Load business name — show cached instantly, then update from Supabase
+        async function loadBusinessName(userId) {
+            const cached = localStorage.getItem('methang_business_name');
+            if (cached) document.getElementById('businessName').textContent = cached;
+
+            const { data } = await db.from('profiles').select('business_name').eq('id', userId).single();
+            const name = data?.business_name || 'My Business';
+            document.getElementById('businessName').textContent = name;
+            localStorage.setItem('methang_business_name', name);
+        }
+
+        // Load all dashboard data
+        async function loadDashboardData(userId) {
+            const now = new Date();
+            const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0];
+
+            // Fetch sales and expenses in parallel
+            const [{ data: sales }, { data: expenses }] = await Promise.all([
+                db.from('sales').select('amount, created_at, items, items_count').eq('user_id', userId).gte('created_at', monthStart),
+                db.from('expenses').select('amount, created_at').eq('user_id', userId).gte('created_at', monthStart)
+            ]);
+
+            // ── Sales Summary ──────────────────────────────────────────
+            const revenue = sales ? sales.reduce((s, r) => s + Number(r.amount || 0), 0) : 0;
+            const saleCount = sales ? sales.length : 0;
+            const avg = saleCount > 0 ? revenue / saleCount : 0;
+            document.querySelector('#amountFigures div:first-child').textContent = '₦' + revenue.toLocaleString('en-NG');
+            document.querySelector('#amountFigures div:last-child').textContent = `${saleCount} transactions • ₦${Math.round(avg).toLocaleString('en-NG')} avg`;
+
+            const days = Math.max(1, Math.ceil((now - new Date(monthStart)) / (1000 * 60 * 60 * 24)));
+            const countEl = document.querySelector('#quantityFigures div:first-child');
+            const labelEl = document.querySelector('#quantityFigures div:last-child');
+            if (countEl) countEl.textContent = saleCount;
+            if (labelEl) labelEl.textContent = `transactions • ${(saleCount / days).toFixed(1)} avg/day`;
+
+            // ── Profit Snapshot ────────────────────────────────────────
+            const expTotal = expenses ? expenses.reduce((s, r) => s + Number(r.amount || 0), 0) : 0;
+            const netProfit = revenue - expTotal;
+            const fmt = v => (v < 0 ? '-₦' : '₦') + Math.abs(v).toLocaleString('en-NG');
+            document.getElementById('profitRevenue').textContent = '₦' + revenue.toLocaleString('en-NG');
+            document.getElementById('profitExpenses').textContent = '₦' + expTotal.toLocaleString('en-NG');
+            const profitNetEl = document.getElementById('profitNet');
+            profitNetEl.textContent = fmt(netProfit);
+            profitNetEl.style.color = netProfit >= 0 ? '#1A1A1A' : '#E11D48';
+
+            // ── Cash Flow ──────────────────────────────────────────────
+            document.getElementById('cashInAmount').textContent = '₦' + revenue.toLocaleString('en-NG');
+            document.getElementById('cashInCount').textContent = saleCount + ' sale' + (saleCount !== 1 ? 's' : '');
+            document.getElementById('cashOutAmount').textContent = '₦' + expTotal.toLocaleString('en-NG');
+            const expCount = expenses ? expenses.length : 0;
+            document.getElementById('cashOutCount').textContent = expCount + ' expense' + (expCount !== 1 ? 's' : '');
+            const balanceEl = document.getElementById('cashTotalBalance');
+            balanceEl.textContent = fmt(revenue - expTotal);
+            balanceEl.style.color = (revenue - expTotal) >= 0 ? '#2563EB' : '#E11D48';
+
+            // ── Top Selling Items ──────────────────────────────────────
+            const itemMap = {};
+            if (sales) {
+                sales.forEach(sale => {
+                    if (!Array.isArray(sale.items)) return;
+                    sale.items.forEach(cartItem => {
+                        const name = cartItem?.product?.name;
+                        if (!name) return;
+                        const qty = Number(cartItem.quantity || 0);
+                        const price = Number(cartItem?.product?.price || 0);
+                        if (!itemMap[name]) itemMap[name] = { qty: 0, amount: 0 };
+                        itemMap[name].qty += qty;
+                        itemMap[name].amount += qty * price;
+                    });
+                });
+            }
+            const topItems = Object.entries(itemMap)
+                .sort((a, b) => b[1].amount - a[1].amount)
+                .slice(0, 5);
+
+            for (let i = 1; i <= 5; i++) {
+                const entry = topItems[i - 1];
+                document.getElementById('topItem' + i + 'Name').textContent = entry ? entry[0] : '-';
+                document.getElementById('topItem' + i + 'Sold').textContent = entry ? entry[1].qty + ' sold' : '0 sold';
+                document.getElementById('topItem' + i + 'Amount').textContent = entry ? '₦' + entry[1].amount.toLocaleString('en-NG') : '₦0';
+            }
+        }
+
+        checkAuth();
+        
+        // Wait for DOM to be fully loaded before attaching event listeners
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('✅ DOM loaded - initializing home page...');
+            
+        // Sales Summary Toggle (Amount/Quantity)
+        const amountBtn = document.getElementById('amountBtn');
+        const quantityBtn = document.getElementById('quantityBtn');
+        const amountChart = document.getElementById('amountChart');
+        const quantityChart = document.getElementById('quantityChart');
+        const amountFigures = document.getElementById('amountFigures');
+        const quantityFigures = document.getElementById('quantityFigures');
+        
+        if (amountBtn && quantityBtn && amountChart && quantityChart && amountFigures && quantityFigures) {
+            amountBtn.addEventListener('click', () => {
+                // Switch to Amount view
+                amountBtn.style.background = '#1A1A1A';
+                amountBtn.style.color = 'white';
+                quantityBtn.style.background = '#F3F4F6';
+                quantityBtn.style.color = '#6B7280';
+                amountChart.style.display = 'flex';
+                quantityChart.style.display = 'none';
+                amountFigures.style.display = 'block';
+                quantityFigures.style.display = 'none';
+            });
+
+            quantityBtn.addEventListener('click', () => {
+                // Switch to Quantity view
+                quantityBtn.style.background = '#1A1A1A';
+                quantityBtn.style.color = 'white';
+                amountBtn.style.background = '#F3F4F6';
+                amountBtn.style.color = '#6B7280';
+                quantityChart.style.display = 'flex';
+                amountChart.style.display = 'none';
+                quantityFigures.style.display = 'block';
+                amountFigures.style.display = 'none';
+            });
+        }
+        
+        // Dropdowns handled via global toggleDropdown() and selectPeriod() functions below
+        
+        // Product Form Handler
+        const productForm = {
+            els: {},
+            uploadedImage: null,
+            isReturnable: false,
+            customCategories: [],
+            
+            init: function() {
+                this.els = {
+                    modal: document.getElementById('productFormModal'),
+                    imageUpload: document.getElementById('productImageUpload'),
+                    imagePreview: document.getElementById('productImagePreview'),
+                    decreaseBtn: document.getElementById('decreaseStockBtn'),
+                    increaseBtn: document.getElementById('increaseStockBtn'),
+                    stockInput: document.getElementById('productStock'),
+                    categorySelect: document.getElementById('productCategory'),
+                    customCategoryInput: document.getElementById('customCategoryInput'),
+                    returnableToggle: document.getElementById('returnableToggle'),
+                    cancelBtn: document.getElementById('cancelProductBtn'),
+                    saveBtn: document.getElementById('saveProductBtn')
+                };
+                
+                this.attachEvents();
+            },
+            
+            attachEvents: function() {
+                // Image Upload
+                this.els.imageUpload.addEventListener('change', (e) => {
+                    const file = e.target.files[0];
+                    if (file) {
+                        const reader = new FileReader();
+                        reader.onload = (event) => {
+                            this.els.imagePreview.src = event.target.result;
+                            this.els.imagePreview.classList.add('show');
+                            this.uploadedImage = event.target.result;
+                        };
+                        reader.readAsDataURL(file);
+                    }
+                });
+                
+                // Stock Controls
+                this.els.decreaseBtn.addEventListener('click', () => {
+                    const current = parseInt(this.els.stockInput.value) || 0;
+                    if (current > 0) this.els.stockInput.value = current - 1;
+                });
+                
+                this.els.increaseBtn.addEventListener('click', () => {
+                    const current = parseInt(this.els.stockInput.value) || 0;
+                    this.els.stockInput.value = current + 1;
+                });
+                
+                // Category Selection
+                this.els.categorySelect.addEventListener('change', () => {
+                    if (this.els.categorySelect.value === '__custom__') {
+                        this.els.customCategoryInput.style.display = 'block';
+                        this.els.customCategoryInput.focus();
+                    } else {
+                        this.els.customCategoryInput.style.display = 'none';
+                    }
+                });
+                
+                this.els.customCategoryInput.addEventListener('blur', () => {
+                    if (this.els.customCategoryInput.value.trim()) {
+                        const newCategory = this.els.customCategoryInput.value.trim();
+                        this.customCategories.push(newCategory);
+                        
+                        const newOption = document.createElement('option');
+                        newOption.value = newCategory;
+                        newOption.textContent = newCategory;
+                        const addNewOption = this.els.categorySelect.querySelector('option[value="__custom__"]');
+                        addNewOption.parentNode.insertBefore(newOption, addNewOption.nextSibling);
+                        
+                        this.els.categorySelect.value = newCategory;
+                        this.els.customCategoryInput.style.display = 'none';
+                        this.els.customCategoryInput.value = '';
+                    } else {
+                        this.els.categorySelect.value = '';
+                        this.els.customCategoryInput.style.display = 'none';
+                    }
+                });
+                
+                this.els.customCategoryInput.addEventListener('keypress', (e) => {
+                    if (e.key === 'Enter' && this.els.customCategoryInput.value.trim()) {
+                        this.els.customCategoryInput.blur();
+                    }
+                });
+                
+                // Returnable Toggle
+                this.els.returnableToggle.addEventListener('click', () => {
+                    this.isReturnable = !this.isReturnable;
+                    this.els.returnableToggle.classList.toggle('active');
+                });
+                
+                // Cancel Button
+                this.els.cancelBtn.addEventListener('click', () => this.close());
+                
+                // Save Button
+                this.els.saveBtn.addEventListener('click', () => this.save());
+                
+                // Close on background click
+                this.els.modal.addEventListener('click', (e) => {
+                    if (e.target === this.els.modal) this.close();
+                });
+            },
+            
+            open: function() {
+                this.els.modal.classList.add('show');
+                this.reset();
+            },
+            
+            close: function() {
+                this.els.modal.classList.remove('show');
+            },
+            
+            reset: function() {
+                document.getElementById('productNameInput').value = '';
+                this.els.stockInput.value = '0';
+                this.els.categorySelect.value = '';
+                document.getElementById('productDescription').value = '';
+                this.els.imagePreview.classList.remove('show');
+                this.els.customCategoryInput.style.display = 'none';
+                this.els.customCategoryInput.value = '';
+                this.uploadedImage = null;
+                this.isReturnable = false;
+                this.els.returnableToggle.classList.remove('active');
+            },
+            
+            save: async function() {
+                const name = document.getElementById('productNameInput').value;
+                if (!name) { alert('Please enter item name'); return; }
+                alert('Preview mode — item saved!');
+                this.close();
+            }
+        };
+        
+        // Initialize
+        productForm.init();
+        
+        // Expense Form Handler
+        const expenseForm = {
+            els: {},
+            customCategories: [],
+            
+            init: function() {
+                this.els = {
+                    modal: document.getElementById('expenseFormModal'),
+                    categorySelect: document.getElementById('expenseCategory'),
+                    customCategoryInput: document.getElementById('customExpenseCategory'),
+                    cancelBtn: document.getElementById('cancelExpenseBtn'),
+                    saveBtn: document.getElementById('saveExpenseBtn')
+                };
+                
+                // Set today's date as default
+                document.getElementById('expenseDate').valueAsDate = new Date();
+                
+                this.attachEvents();
+            },
+            
+            attachEvents: function() {
+                this.els.categorySelect.addEventListener('change', () => {
+                    if (this.els.categorySelect.value === '__custom__') {
+                        this.els.customCategoryInput.style.display = 'block';
+                        this.els.customCategoryInput.focus();
+                    } else {
+                        this.els.customCategoryInput.style.display = 'none';
+                    }
+                });
+                
+                this.els.customCategoryInput.addEventListener('blur', () => {
+                    if (this.els.customCategoryInput.value.trim()) {
+                        const newCategory = this.els.customCategoryInput.value.trim();
+                        this.customCategories.push(newCategory);
+                        
+                        const newOption = document.createElement('option');
+                        newOption.value = newCategory;
+                        newOption.textContent = newCategory;
+                        const addNewOption = this.els.categorySelect.querySelector('option[value="__custom__"]');
+                        addNewOption.parentNode.insertBefore(newOption, addNewOption.nextSibling);
+                        
+                        this.els.categorySelect.value = newCategory;
+                        this.els.customCategoryInput.style.display = 'none';
+                        this.els.customCategoryInput.value = '';
+                    } else {
+                        this.els.categorySelect.value = '';
+                        this.els.customCategoryInput.style.display = 'none';
+                    }
+                });
+                
+                this.els.customCategoryInput.addEventListener('keypress', (e) => {
+                    if (e.key === 'Enter' && this.els.customCategoryInput.value.trim()) {
+                        this.els.customCategoryInput.blur();
+                    }
+                });
+                
+                this.els.cancelBtn.addEventListener('click', () => this.close());
+                this.els.saveBtn.addEventListener('click', () => this.save());
+                this.els.modal.addEventListener('click', (e) => {
+                    if (e.target === this.els.modal) this.close();
+                });
+            },
+            
+            open: function() {
+                this.els.modal.classList.add('show');
+                this.reset();
+            },
+            
+            close: function() {
+                this.els.modal.classList.remove('show');
+            },
+            
+            reset: function() {
+                document.getElementById('expenseDescription').value = '';
+                document.getElementById('expenseAmount').value = '';
+                document.getElementById('expenseDate').valueAsDate = new Date();
+                this.els.categorySelect.value = '';
+                document.getElementById('expenseNotes').value = '';
+                this.els.customCategoryInput.style.display = 'none';
+                this.els.customCategoryInput.value = '';
+            },
+            
+            save: async function() {
+                const desc = document.getElementById('expenseDescription').value;
+                const amount = parseFloat(document.getElementById('expenseAmount').value) || 0;
+                if (!desc) { alert('Please enter expense description'); return; }
+                if (!amount || amount <= 0) { alert('Please enter a valid amount'); return; }
+                alert('Preview mode — expense saved!');
+                this.close();
+            }
+        };
+        
+        // Customer Form Handler
+        const customerForm = {
+            els: {},
+            
+            init: function() {
+                this.els = {
+                    modal: document.getElementById('customerFormModal'),
+                    cancelBtn: document.getElementById('cancelCustomerBtn'),
+                    saveBtn: document.getElementById('saveCustomerBtn')
+                };
+                
+                this.attachEvents();
+            },
+            
+            attachEvents: function() {
+                this.els.cancelBtn.addEventListener('click', () => this.close());
+                this.els.saveBtn.addEventListener('click', () => this.save());
+                this.els.modal.addEventListener('click', (e) => {
+                    if (e.target === this.els.modal) this.close();
+                });
+            },
+            
+            open: function() {
+                this.els.modal.classList.add('show');
+                this.reset();
+            },
+            
+            close: function() {
+                this.els.modal.classList.remove('show');
+            },
+            
+            reset: function() {
+                document.getElementById('customerName').value = '';
+                document.getElementById('customerPhone').value = '';
+                document.getElementById('customerEmail').value = '';
+                document.getElementById('customerAddress').value = '';
+                document.getElementById('customerNotes').value = '';
+            },
+            
+            save: async function() {
+                const name = document.getElementById('customerName').value;
+                const phone = document.getElementById('customerPhone').value;
+                if (!name) { alert('Please enter customer name'); return; }
+                if (!phone) { alert('Please enter phone number'); return; }
+                alert('Preview mode — customer saved!');
+                this.close();
+            }
+        };
+        
+        // Initialize all forms
+        productForm.init();
+        expenseForm.init();
+        customerForm.init();
+        
+        // Connect Quick Action cards to open forms
+        const productBtn = document.querySelector('[data-action="product"]');
+        const expenseBtn = document.querySelector('[data-action="expense"]');
+        const customerBtn = document.querySelector('[data-action="customer"]');
+        
+        if (productBtn) {
+            productBtn.addEventListener('click', () => {
+                console.log('✅ Product button clicked');
+                productForm.open();
+            });
+        }
+        
+        if (expenseBtn) {
+            expenseBtn.addEventListener('click', () => {
+                console.log('✅ Expense button clicked');
+                expenseForm.open();
+            });
+        }
+        
+        if (customerBtn) {
+            customerBtn.addEventListener('click', () => {
+                console.log('✅ Customer button clicked');
+                customerForm.open();
+            });
+        }
+        
+        console.log('✅ All event listeners attached successfully!');
+        
+        
+        }); // End DOMContentLoaded
+
+        var allDropdownIds = ['periodDropdown', 'topItemsPeriodDropdown', 'expDropdown', 'profitDropdown', 'cashDropdown'];
+
+        function toggleDropdown(dropdownId) {
+            var dropdown = document.getElementById(dropdownId);
+            var isOpen = dropdown && dropdown.style.display === 'block';
+            allDropdownIds.forEach(function(id) {
+                var d = document.getElementById(id);
+                if (d) d.style.display = 'none';
+            });
+            if (dropdown && !isOpen) {
+                dropdown.style.display = 'block';
+            }
+        }
+
+        function selectPeriod(textId, dropdownId, value) {
+            var textEl = document.getElementById(textId);
+            var dropdown = document.getElementById(dropdownId);
+            if (textEl) textEl.textContent = value;
+            if (dropdown) dropdown.style.display = 'none';
+        }
+
+        document.addEventListener('click', function(e) {
+            var clickedInsideAnyDropdown = e.target.closest('[id$="Dropdown"]') || e.target.closest('button[onclick*="toggleDropdown"]');
+            if (!clickedInsideAnyDropdown) {
+                allDropdownIds.forEach(function(id) {
+                    var d = document.getElementById(id);
+                    if (d) d.style.display = 'none';
+                });
+            }
+        });
+
+    </script>
+</body>
+</html>
